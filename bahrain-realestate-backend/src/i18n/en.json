@@ -1,0 +1,28 @@
+{
+  "language": "en",
+  "translations": {
+    "auth": {
+      "register": "Register",
+      "login": "Login",
+      "logout": "Logout",
+      "email": "Email",
+      "password": "Password",
+      "invalidCredentials": "Invalid credentials",
+      "accountCreated": "Account created successfully"
+    },
+    "properties": {
+      "title": "Title",
+      "description": "Description",
+      "price": "Price",
+      "area": "Area",
+      "type": "Type",
+      "notFound": "Property not found"
+    },
+    "errors": {
+      "internalError": "Internal Server Error",
+      "validationError": "Validation Error",
+      "unauthorized": "Unauthorized",
+      "forbidden": "Forbidden"
+    }
+  }
+}

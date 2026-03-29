@@ -1,0 +1,28 @@
+{
+  "language": "ar",
+  "translations": {
+    "auth": {
+      "register": "إنشاء حساب",
+      "login": "تسجيل الدخول",
+      "logout": "تسجيل الخروج",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور",
+      "invalidCredentials": "بيانات الدخول غير صحيحة",
+      "accountCreated": "تم إنشاء الحساب بنجاح"
+    },
+    "properties": {
+      "title": "العنوان",
+      "description": "الوصف",
+      "price": "السعر",
+      "area": "المساحة",
+      "type": "النوع",
+      "notFound": "لم يتم العثور على الملكية"
+    },
+    "errors": {
+      "internalError": "خطأ في الخادم",
+      "validationError": "خطأ في التحقق من البيانات",
+      "unauthorized": "غير مصرح",
+      "forbidden": "ممنوع الوصول"
+    }
+  }
+}

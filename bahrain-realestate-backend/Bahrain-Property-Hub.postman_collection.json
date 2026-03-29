@@ -1,0 +1,846 @@
+{
+	"info": {
+		"_postman_id": "bahrain-property-hub-api",
+		"name": "Bahrain Property Hub API",
+		"description": "Complete API collection for Bahrain Property Hub backend",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "🏠 Welcome & Health",
+			"item": [
+				{
+					"name": "Welcome Page",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/",
+							"host": ["{{base_url}}"],
+							"path": [""]
+						}
+					}
+				},
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/health",
+							"host": ["{{base_url}}"],
+							"path": ["health"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔐 Authentication",
+			"item": [
+				{
+					"name": "Test Data (Development)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/auth/test-data",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "test-data"]
+						}
+					}
+				},
+				{
+					"name": "Login - Owner Ahmed",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.success && jsonData.data.token) {",
+									"        pm.environment.set('token', jsonData.data.token);",
+									"        pm.environment.set('employee_id', jsonData.data.employee.id);",
+									"        pm.environment.set('company_id', jsonData.data.employee.companyId);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"ahmed@bahrainrealestate.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Login - Manager Sara",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"sara@bahrainrealestate.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Login - Agent Mohammed",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"mohammed@bahrainrealestate.com\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Login - Owner Fatima (Company 2)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"fatima@gulfproperties.bh\",\n  \"password\": \"password123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/login",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "login"]
+						}
+					}
+				},
+				{
+					"name": "Register New Company",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"companyName\": \"النخبة العقارية\",\n  \"companyEmail\": \"info@elite-realestate.bh\",\n  \"companyPhone\": \"+97317555666\",\n  \"crNumber\": \"CR555666777\",\n  \"ownerName\": \"خالد الأنصاري\",\n  \"ownerEmail\": \"khalid@elite-realestate.bh\",\n  \"ownerPhone\": \"+97336777888\",\n  \"password\": \"newpassword123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/register",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "register"]
+						}
+					}
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"token\": \"{{token}}\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/auth/refresh-token",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "refresh-token"]
+						}
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/auth/logout",
+							"host": ["{{base_url}}"],
+							"path": ["api", "auth", "logout"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🌐 Public APIs",
+			"item": [
+				{
+					"name": "Get All Governorates",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/governorates",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "governorates"]
+						}
+					}
+				},
+				{
+					"name": "Get Areas by Governorate",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/areas?governorate=Manama",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "areas"],
+							"query": [
+								{
+									"key": "governorate",
+									"value": "Manama"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Properties - All",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "properties"]
+						}
+					}
+				},
+				{
+					"name": "Search Properties - Rent Apartments",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/properties?purpose=rent&type=Apartment&governorate=Manama&minPrice=500&maxPrice=1000&bedrooms=2",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "properties"],
+							"query": [
+								{
+									"key": "purpose",
+									"value": "rent"
+								},
+								{
+									"key": "type",
+									"value": "Apartment"
+								},
+								{
+									"key": "governorate",
+									"value": "Manama"
+								},
+								{
+									"key": "minPrice",
+									"value": "500"
+								},
+								{
+									"key": "maxPrice",
+									"value": "1000"
+								},
+								{
+									"key": "bedrooms",
+									"value": "2"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Properties - Sale Villas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/properties?purpose=sale&type=Villa&governorate=Muharraq&minPrice=200000&maxPrice=400000",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "properties"],
+							"query": [
+								{
+									"key": "purpose",
+									"value": "sale"
+								},
+								{
+									"key": "type",
+									"value": "Villa"
+								},
+								{
+									"key": "governorate",
+									"value": "Muharraq"
+								},
+								{
+									"key": "minPrice",
+									"value": "200000"
+								},
+								{
+									"key": "maxPrice",
+									"value": "400000"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Search Properties - Advanced Filter",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/properties?purpose=rent&governorate=Manama&area=Juffair&minPrice=600&maxPrice=800&bedrooms=2&bathrooms=2&isFeatured=true",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "properties"],
+							"query": [
+								{
+									"key": "purpose",
+									"value": "rent"
+								},
+								{
+									"key": "governorate",
+									"value": "Manama"
+								},
+								{
+									"key": "area",
+									"value": "Juffair"
+								},
+								{
+									"key": "minPrice",
+									"value": "600"
+								},
+								{
+									"key": "maxPrice",
+									"value": "800"
+								},
+								{
+									"key": "bedrooms",
+									"value": "2"
+								},
+								{
+									"key": "bathrooms",
+									"value": "2"
+								},
+								{
+									"key": "isFeatured",
+									"value": "true"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Property Details",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/properties/1",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "properties", "1"]
+						}
+					}
+				},
+				{
+					"name": "Get Approved Companies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/api/public/companies",
+							"host": ["{{base_url}}"],
+							"path": ["api", "public", "companies"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏢 Company Management",
+			"item": [
+				{
+					"name": "Get Company Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/company/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Company Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"شركة البحرين العقارية المحدودة (محدثة)\",\n  \"phone\": \"+97317123999\",\n  \"email\": \"info@bahrainrealestate.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Get Company Employees",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/company/employees",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "employees"]
+						}
+					}
+				},
+				{
+					"name": "Add New Employee",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.success && jsonData.data.id) {",
+									"        pm.environment.set('new_employee_id', jsonData.data.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"نورا الزياني\",\n  \"email\": \"nora@bahrainrealestate.com\",\n  \"phone\": \"+97336666777\",\n  \"role\": \"AGENT\",\n  \"password\": \"employee123\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/employees",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "employees"]
+						}
+					}
+				},
+				{
+					"name": "Update Employee",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"محمد الزايد (محدث)\",\n  \"phone\": \"+97336333444\",\n  \"role\": \"MANAGER\",\n  \"isActive\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/employees/8",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "employees", "8"]
+						}
+					}
+				},
+				{
+					"name": "Delete Employee",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/company/employees/{{new_employee_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "employees", "{{new_employee_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Get Company Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/company/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏠 Property Management",
+			"item": [
+				{
+					"name": "Add Apartment for Rent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const jsonData = pm.response.json();",
+									"    if (jsonData.success && jsonData.data.id) {",
+									"        pm.environment.set('property_id', jsonData.data.id);",
+									"    }",
+									"}"
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"شقة فاخرة من غرفتين في منطقة الجفير المميزة، مفروشة بالكامل ومطلة على البحر مع مواقف سيارات مجانية وحمام سباحة مشترك\",\n  \"purpose\": \"rent\",\n  \"type\": \"Apartment\",\n  \"governorate\": \"Manama\",\n  \"area\": \"Juffair\",\n  \"price\": 750,\n  \"bedrooms\": 2,\n  \"bathrooms\": 2,\n  \"areaSqm\": 140,\n  \"isFeatured\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties"]
+						}
+					}
+				},
+				{
+					"name": "Add Villa for Sale",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"فيلا راقية من 5 غرف نوم في منطقة البديع الهادئة مع حديقة واسعة ومسبح خاص وموقف سيارات لـ 3 سيارات\",\n  \"purpose\": \"sale\",\n  \"type\": \"Villa\",\n  \"governorate\": \"Riffa\",\n  \"area\": \"Budaiya\",\n  \"price\": 350000,\n  \"bedrooms\": 5,\n  \"bathrooms\": 4,\n  \"areaSqm\": 450,\n  \"isFeatured\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties"]
+						}
+					}
+				},
+				{
+					"name": "Add Commercial Office",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"مكتب تجاري حديث في برج المالية بالمنطقة الدبلوماسية، مجهز بالكامل مع إنترنت عالي السرعة ونظام أمان متقدم\",\n  \"purpose\": \"rent\",\n  \"type\": \"Commercial\",\n  \"governorate\": \"Manama\",\n  \"area\": \"Diplomatic Area\",\n  \"price\": 1500,\n  \"bedrooms\": 0,\n  \"bathrooms\": 2,\n  \"areaSqm\": 250,\n  \"isFeatured\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties"]
+						}
+					}
+				},
+				{
+					"name": "Add Studio",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"استوديو عصري ومفروش في منطقة السيف، مثالي للمهنيين الشباب أو الطلاب، قريب من المراكز التجارية والمطاعم\",\n  \"purpose\": \"rent\",\n  \"type\": \"Studio\",\n  \"governorate\": \"Manama\",\n  \"area\": \"Seef\",\n  \"price\": 400,\n  \"bedrooms\": 0,\n  \"bathrooms\": 1,\n  \"areaSqm\": 60,\n  \"isFeatured\": false\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties"]
+						}
+					}
+				},
+				{
+					"name": "Update Property",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"شقة حديثة من 3 غرف مع إطلالة بحرية رائعة في قلب منطقة السيف (محدثة)\",\n  \"price\": 850,\n  \"bedrooms\": 3,\n  \"bathrooms\": 2,\n  \"areaSqm\": 160,\n  \"isFeatured\": true,\n  \"status\": \"active\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/company/properties/{{property_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties", "{{property_id}}"]
+						}
+					}
+				},
+				{
+					"name": "Delete Property",
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/company/properties/{{property_id}}",
+							"host": ["{{base_url}}"],
+							"path": ["api", "company", "properties", "{{property_id}}"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👤 Employee APIs",
+			"item": [
+				{
+					"name": "Get Employee Profile",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/employee/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "employee", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Update Employee Profile",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"أحمد الخليفة (محدث)\",\n  \"phone\": \"+97336111222\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/employee/profile",
+							"host": ["{{base_url}}"],
+							"path": ["api", "employee", "profile"]
+						}
+					}
+				},
+				{
+					"name": "Get Employee Properties",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/api/employee/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "employee", "properties"]
+						}
+					}
+				},
+				{
+					"name": "Add Property (Employee)",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{token}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"description\": \"شقة جديدة أضافها الموظف للاختبار\",\n  \"purpose\": \"rent\",\n  \"type\": \"Apartment\",\n  \"governorate\": \"Manama\",\n  \"area\": \"Seef\",\n  \"price\": 600,\n  \"bedrooms\": 2,\n  \"bathrooms\": 1,\n  \"areaSqm\": 100\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/api/employee/properties",
+							"host": ["{{base_url}}"],
+							"path": ["api", "employee", "properties"]
+						}
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		}
+	]
+}

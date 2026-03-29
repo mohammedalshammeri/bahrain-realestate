@@ -1,0 +1,49 @@
+{
+  "expo": {
+    "name": "Bahrain Property Hub",
+    "slug": "bahrain-property-hub",
+    "version": "1.0.0",
+    "scheme": "bahrain-property-hub",
+    "orientation": "portrait",
+    "icon": "./assets/WhatsApp Image 2026-02-17 at 1.59.17 PM.jpeg",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/WhatsApp Image 2026-02-17 at 1.59.17 PM.jpeg",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "supportsRTL": true,
+      "bundleIdentifier": "com.bahrainpropertyhub.app",
+      "infoPlist": {
+        "NSPhotoLibraryUsageDescription": "This app requires access to your photo library to upload property images."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/WhatsApp Image 2026-02-17 at 1.59.17 PM.jpeg",
+        "backgroundColor": "#ffffff"
+      },
+      "supportsRTL": true,
+      "package": "com.bahrainpropertyhub.app",
+      "permissions": [
+        "INTERNET"
+      ],
+      "usesCleartextTraffic": true,
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "supportsRTL": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-localization"
+    ]
+  }
+}

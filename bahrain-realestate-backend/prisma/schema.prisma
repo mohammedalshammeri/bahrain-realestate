@@ -1,0 +1,553 @@
+// This is your Prisma schema file.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Enums
+enum CompanyStatus {
+  pending
+  approved
+  rejected
+  blocked
+
+  @@map("company_status")
+}
+
+enum PropertyPurpose {
+  sale
+  rent
+
+  @@map("property_purpose")
+}
+
+enum PropertyStatus {
+  active
+  pending
+  rejected
+  sold
+  rented
+  expired
+
+  @@map("property_status")
+}
+
+enum ComplaintStatus {
+  new
+  under_review
+  resolved
+
+  @@map("complaint_status")
+}
+
+enum PaymentStatus {
+  pending
+  completed
+  failed
+
+  @@map("payment_status")
+}
+
+enum SubscriptionRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@map("subscription_request_status")
+}
+
+enum IndividualPropertyStatus {
+  DRAFT
+  PENDING_ADMIN
+  SENT_TO_COMPANIES
+  ACTIVE
+  REJECTED
+  SOLD
+
+  @@map("individual_property_status")
+}
+
+enum IndividualPropertyCompanyOfferStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+
+  @@map("individual_property_company_offer_status")
+}
+
+enum SystemRole {
+  SUPER_ADMIN
+  ADMIN
+
+  @@map("system_role")
+}
+
+enum EmployeeStatus {
+  pending
+  active
+  rejected
+  blocked
+
+  @@map("employee_status")
+}
+
+enum CompanyEmployeeRole {
+  OWNER
+  MANAGER
+  AGENT
+
+  @@map("company_employee_role")
+}
+
+
+// Models
+model Admin {
+  id           Int        @id @default(autoincrement())
+  name         String     @db.Text
+  email        String     @unique @db.VarChar(320)
+  passwordHash String     @map("password_hash") @db.Text
+  role         SystemRole @default(SUPER_ADMIN)
+  createdAt    DateTime   @default(now()) @map("created_at")
+
+  @@map("admins")
+}
+
+model Company {
+  id                   Int     @id @default(autoincrement())
+  name                 String  @db.Text
+  crNumber             String  @unique @map("cr_number") @db.VarChar(100)
+  licenseImageUrl      String? @map("license_image_url") @db.Text
+  email                String  @unique @db.VarChar(320)
+  phone                String  @db.VarChar(50)
+  status               CompanyStatus @default(pending)
+  employeesLimit       Int     @default(5) @map("employees_limit")
+  freeAdsRemaining     Int     @default(50) @map("free_ads_remaining")
+  featuredAdsBalance   Int     @default(0) @map("featured_ads_balance")
+  subscriptionPlan     String  @default("free") @map("subscription_plan") @db.VarChar(50)
+  subscriptionStartDate DateTime? @map("subscription_start_date")
+  subscriptionEndDate   DateTime? @map("subscription_end_date")
+  subscriptionStatus    String  @default("active") @map("subscription_status") @db.VarChar(20)
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at")  // Relations
+  properties  Property[]
+  complaints  Complaint[]
+  submittedComplaints Complaint[] @relation("SubmitterCompany")
+  payments    Payment[]
+  employees   CompanyEmployee[]
+  paymentTransactions PaymentTransaction[]
+  ads                 Ad[]
+  withdrawals         Withdrawal[]
+  individualPropertyOffers IndividualPropertyCompanyOffer[]
+  subscriptionRequests SubscriptionRequest[]
+  @@map("companies")
+}
+
+model Withdrawal {
+  id        Int      @id @default(autoincrement())
+  companyId Int      @map("company_id")
+  amount    Decimal  @db.Decimal(10, 2)
+  status    String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("withdrawals")
+}
+
+model CompanyEmployee {
+  id           Int                  @id @default(autoincrement())
+  companyId    Int                  @map("company_id")
+  name         String               @db.Text
+  email        String               @db.VarChar(320)
+  phone        String?              @db.VarChar(50)
+  role         CompanyEmployeeRole  @default(AGENT)
+  passwordHash String               @map("password_hash") @db.Text
+  isActive     Boolean              @default(true) @map("is_active")
+  status       EmployeeStatus       @default(pending)
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  company      Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdProperties Property[] @relation("PropertyCreatedBy")
+  updatedProperties Property[] @relation("PropertyUpdatedBy")
+  createdPropertyImages PropertyImage[]
+  passwordResets PasswordReset[]
+
+  @@unique([companyId, email])
+  @@index([companyId])
+  @@map("company_employees")
+}
+
+model Property {
+  id                   Int     @id @default(autoincrement())
+  companyId            Int     @map("company_id")
+  createdByEmployeeId  Int     @map("created_by_employee_id")
+  updatedByEmployeeId  Int?    @map("updated_by_employee_id")
+  title                String? @db.VarChar(255)
+  type                 String  @db.VarChar(50)
+  purpose              PropertyPurpose
+  price                Decimal @db.Decimal(12, 2)
+  governorate          String  @db.VarChar(100)
+  area                 String  @db.VarChar(100)
+  branch               String? @db.VarChar(100)
+  description          String  @db.Text
+  videoUrl             String? @map("video_url") @db.Text
+  locationLat          Decimal? @map("location_lat") @db.Decimal(10, 8)
+  locationLng          Decimal? @map("location_lng") @db.Decimal(11, 8)
+  bedrooms             Int?
+  bathrooms            Int?
+  areaSqm              Int?    @map("area_sqm")
+  furnishingStatus     String? @map("furnishing_status") @db.VarChar(50)
+  floorsCount          Int?    @map("floors_count")
+  floorNumber          Int?    @map("floor_number")
+  livingRooms          Int?    @map("living_rooms")
+  buildingAge          Int?    @map("building_age")
+  negotiable           Boolean @default(false)
+  parkingCount         Int?    @map("parking_count")
+  condition            String? @db.VarChar(50)
+  showPhone            Boolean @default(true) @map("show_phone")
+  enableWhatsapp       Boolean @default(true) @map("enable_whatsapp")
+  isFeatured           Boolean @default(false) @map("is_featured")
+  isFeaturedPlus       Boolean @default(false) @map("is_featured_plus")
+  status               PropertyStatus @default(active)
+  expiresAt            DateTime @map("expires_at")
+  durationDays         Int?     @map("duration_days")
+  createdAt            DateTime @default(now()) @map("created_at")
+  updatedAt            DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  company        Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  createdBy      CompanyEmployee @relation("PropertyCreatedBy", fields: [createdByEmployeeId], references: [id])
+  updatedBy      CompanyEmployee? @relation("PropertyUpdatedBy", fields: [updatedByEmployeeId], references: [id])
+  propertyImages PropertyImage[]
+  ads            Ad[]
+  complaints     Complaint[]
+
+  @@index([companyId])
+  @@index([createdByEmployeeId])
+  @@index([updatedByEmployeeId])
+  @@map("properties")
+}
+
+model PropertyImage {
+  id           Int     @id @default(autoincrement())
+  propertyId   Int     @map("property_id")
+  createdByEmployeeId Int @map("created_by_employee_id")
+  imageUrl     String  @map("image_url") @db.Text
+  displayOrder Int     @default(0) @map("display_order")
+  isVideo      Boolean @default(false) @map("is_video")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  // Relations
+  property Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  createdBy CompanyEmployee @relation(fields: [createdByEmployeeId], references: [id])
+
+  @@index([propertyId])
+  @@index([createdByEmployeeId])
+  @@map("property_images")
+}
+
+enum ComplaintSubmitterType {
+  INDIVIDUAL
+  COMPANY
+  
+  @@map("complaint_submitter_type")
+}
+
+model Complaint {
+  id         Int     @id @default(autoincrement())
+  companyId  Int?    @map("company_id")
+  propertyId Int?    @map("property_id")
+  
+  // Submitter information
+  submitterType     ComplaintSubmitterType @map("submitter_type")
+  
+  // For individuals
+  userPhone         String? @map("user_phone") @db.VarChar(50)
+  userEmail         String? @map("user_email") @db.VarChar(320)
+  userName          String? @map("user_name") @db.VarChar(255)
+  
+  // For companies
+  submitterCompanyId    Int? @map("submitter_company_id")
+  submitterCompanyName  String? @map("submitter_company_name") @db.VarChar(255)
+  submitterCompanyEmail String? @map("submitter_company_email") @db.VarChar(320)
+  submitterCompanyPhone String? @map("submitter_company_phone") @db.VarChar(50)
+  
+  message    String  @db.Text
+  status     ComplaintStatus @default(new)
+  adminNotes String? @map("admin_notes") @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  // Relations
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  submitterCompany Company? @relation("SubmitterCompany", fields: [submitterCompanyId], references: [id], onDelete: SetNull)
+
+  @@index([companyId])
+  @@index([propertyId])
+  @@index([submitterCompanyId])
+  @@map("complaints")
+}
+
+model Payment {
+  id             Int     @id @default(autoincrement())
+  companyId      Int     @map("company_id")
+  packageType    String  @map("package_type") @db.VarChar(50)
+  amount         Decimal @db.Decimal(10, 2)
+  paymentMethod  String  @map("payment_method") @db.VarChar(50)
+  paymentStatus  PaymentStatus @default(pending) @map("payment_status")
+  transactionId  String? @unique @map("transaction_id") @db.VarChar(255)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  // Relations
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  @@index([companyId])
+  @@map("payments")
+}
+
+model PaymentTransaction {
+  id            Int       @id @default(autoincrement())
+  companyId     Int
+  packageType   String
+  amount        Float
+  status        String     // pending | success | failed
+  sessionId     String?    // AFS session id
+  paymentRef    String?    // AFS payment reference
+  callbackData  Json?      // full callback object
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+}
+
+model Ad {
+  id          Int       @id @default(autoincrement())
+  companyId   Int       @map("company_id")
+  propertyId  Int       @map("property_id")
+  title       String    @db.VarChar(255)
+  description String    @db.Text
+  type        String    @default("regular") @db.VarChar(50)
+  isFeatured  Boolean   @default(false) @map("is_featured")
+  status      String    @default("pending") @db.VarChar(50)
+  isDeleted   Boolean   @default(false) @map("is_deleted")
+  rejectionReason String? @map("rejection_reason") @db.Text
+  startDate   DateTime  @map("start_date")
+  endDate     DateTime  @map("end_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  property    Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([propertyId])
+  @@map("ads")
+}
+
+model Governorate {
+  id     Int    @id @default(autoincrement())
+  nameAr String @map("name_ar") @db.VarChar(100)
+  nameEn String @map("name_en") @db.VarChar(100)
+
+  // Relations
+  areas Area[]
+
+  @@map("governorates")
+}
+
+model Area {
+  id           Int     @id @default(autoincrement())
+  governorateId Int    @map("governorate_id")
+  nameAr       String  @map("name_ar") @db.VarChar(100)
+  nameEn       String  @map("name_en") @db.VarChar(100)
+
+  // Relations
+  governorate Governorate @relation(fields: [governorateId], references: [id], onDelete: Cascade)
+
+  @@index([governorateId])
+  @@map("areas")
+}
+
+model SubscriptionPackage {
+  id               Int      @id @default(autoincrement())
+  nameAr           String   @map("name_ar") @db.VarChar(100)
+  nameEn           String   @map("name_en") @db.VarChar(100)
+  price            Decimal  @db.Decimal(10, 2)
+  durationDays     Int      @default(30) @map("duration_days")
+  adsLimit         Int      @default(0) @map("ads_limit")
+  featuredAdsLimit Int      @default(0) @map("featured_ads_limit")
+  descriptionAr    String?  @map("description_ar") @db.Text
+  descriptionEn    String?  @map("description_en") @db.Text
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @default(now()) @updatedAt @map("updated_at")
+  requests         SubscriptionRequest[]
+
+  @@map("subscription_packages")
+}
+
+model Setting {
+  id        Int     @id @default(autoincrement())
+  key       String  @unique @db.VarChar(100)
+  value     String  @db.Text
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("settings")
+}
+
+model IndividualUser {
+  id           Int      @id @default(autoincrement())
+  fullName     String?  @map("full_name") @db.Text
+  phone        String?  @unique @db.VarChar(50)
+  email        String?  @unique @db.VarChar(320)
+  profileImageUrl String? @map("profile_image_url") @db.Text
+  passwordHash String?  @map("password_hash") @db.Text
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Relations
+  properties IndividualProperty[]
+  passwordResets PasswordReset[]
+
+  @@map("individual_users")
+}
+
+model PasswordReset {
+  id               Int      @id @default(autoincrement())
+  userType         String   @map("user_type") @db.VarChar(50)
+  individualUserId Int?     @map("individual_user_id")
+  companyEmployeeId Int?    @map("company_employee_id")
+  email            String?  @db.VarChar(320)
+  phone            String?  @db.VarChar(50)
+  tokenHash        String   @map("token_hash") @db.VarChar(64)
+  expiresAt        DateTime @map("expires_at")
+  usedAt           DateTime? @map("used_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  individualUser IndividualUser? @relation(fields: [individualUserId], references: [id], onDelete: Cascade)
+  companyEmployee CompanyEmployee? @relation(fields: [companyEmployeeId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash])
+  @@index([userType])
+  @@index([individualUserId])
+  @@index([companyEmployeeId])
+  @@map("password_resets")
+}
+
+model IndividualProperty {
+  id                  Int                     @id @default(autoincrement())
+  ownerIndividualId   Int                     @map("owner_individual_id")
+  title               String?                 @db.VarChar(255)
+  description         String                  @db.Text
+  videoUrl            String?                 @map("video_url") @db.Text
+  type                String                  @db.VarChar(50)
+  purpose             PropertyPurpose
+  minimumPrice        Decimal                 @map("minimum_price") @db.Decimal(12, 2)
+  governorate         String                  @db.VarChar(100)
+  area                String                  @db.VarChar(100)
+  branch              String?                 @db.VarChar(100)
+  locationLat         Decimal?                @map("location_lat") @db.Decimal(10, 8)
+  locationLng         Decimal?                @map("location_lng") @db.Decimal(11, 8)
+  bedrooms            Int?
+  bathrooms           Int?
+  areaSqm             Int?                    @map("area_sqm")
+  furnishingStatus    String?                 @map("furnishing_status") @db.VarChar(50)
+  floorsCount         Int?                    @map("floors_count")
+  floorNumber         Int?                    @map("floor_number")
+  livingRooms         Int?                    @map("living_rooms")
+  buildingAge         Int?                    @map("building_age")
+  negotiable          Boolean                 @default(false)
+  parkingCount        Int?                    @map("parking_count")
+  condition           String?                 @db.VarChar(50)
+  showPhone           Boolean                 @default(true) @map("show_phone")
+  enableWhatsapp      Boolean                 @default(true) @map("enable_whatsapp")
+  status              IndividualPropertyStatus @default(PENDING_ADMIN)
+  adminRejectionReason String?                @map("admin_rejection_reason") @db.Text
+  expiresAt           DateTime?               @map("expires_at")
+  durationDays        Int?                    @map("duration_days")
+  createdAt           DateTime                @default(now()) @map("created_at")
+  updatedAt           DateTime                @default(now()) @updatedAt @map("updated_at")
+
+  owner IndividualUser @relation(fields: [ownerIndividualId], references: [id], onDelete: Cascade)
+
+  offers IndividualPropertyCompanyOffer[]
+  images IndividualPropertyImage[]
+  videos IndividualPropertyVideo[]
+
+  @@index([ownerIndividualId])
+  @@map("individual_properties")
+}
+
+model IndividualPropertyVideo {
+  id           Int      @id @default(autoincrement())
+  propertyId   Int      @map("property_id")
+  videoUrl     String   @map("video_url") @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  property IndividualProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("individual_property_videos")
+}
+
+model IndividualPropertyImage {
+  id           Int      @id @default(autoincrement())
+  propertyId   Int      @map("property_id")
+  imageUrl     String   @map("image_url") @db.Text
+  displayOrder Int      @default(0) @map("display_order")
+  isCover      Boolean  @default(false) @map("is_cover")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  property IndividualProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@index([propertyId])
+  @@map("individual_property_images")
+}
+
+model IndividualPropertyCompanyOffer {
+  id           Int      @id @default(autoincrement())
+  companyId    Int      @map("company_id")
+  propertyId   Int      @map("property_id")
+  companyPrice Decimal? @map("company_price") @db.Decimal(12, 2)
+  status       IndividualPropertyCompanyOfferStatus @default(PENDING)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  property IndividualProperty @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, propertyId])
+  @@index([companyId])
+  @@index([propertyId])
+  @@map("individual_property_company_offers")
+}
+
+model SubscriptionRequest {
+  id                    Int                       @id @default(autoincrement())
+  companyId             Int                       @map("company_id")
+  subscriptionPackageId Int                       @map("subscription_package_id")
+  status                SubscriptionRequestStatus @default(PENDING)
+  adminNotes            String?                   @map("admin_notes") @db.Text
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
+
+  // Relations
+  company               Company                   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  package               SubscriptionPackage       @relation(fields: [subscriptionPackageId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([subscriptionPackageId])
+  @@map("subscription_requests")
+}
+

@@ -1,0 +1,8 @@
+<svg width="900" height="512" viewBox="0 0 900 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="900" height="512" rx="96" fill="#0F172A"/>
+  <g>
+    <rect x="96" y="176" width="140" height="140" rx="28" fill="#2563EB"/>
+    <text x="166" y="262" text-anchor="middle" font-family="Inter, Poppins, Arial, sans-serif" font-size="56" font-weight="700" fill="#FFFFFF">BPH</text>
+  </g>
+  <text x="270" y="262" font-family="Inter, Poppins, Arial, sans-serif" font-size="44" font-weight="600" fill="#FFFFFF">Property Hub</text>
+</svg>
