@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { db } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import {
   registerPushToken,
@@ -162,6 +163,11 @@ export const getPushNotificationHistoryController = async (req: AuthRequest, res
       skip,
       limit
     );
+    // Get real total count
+    const totalResult = companyId
+      ? await db.$queryRaw`SELECT COUNT(*)::int as count FROM push_notifications WHERE company_id = ${companyId}` as any[]
+      : [{ count: notifications.length }];
+    const total = totalResult?.[0]?.count || notifications.length;
 
     res.json({
       success: true,
@@ -170,7 +176,7 @@ export const getPushNotificationHistoryController = async (req: AuthRequest, res
         pagination: {
           page,
           limit,
-          total: notifications.length, // In production, you'd want a separate count query
+          total,
         },
       },
     });

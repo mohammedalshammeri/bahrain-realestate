@@ -25,6 +25,7 @@ export default function PackagesPage() {
     featuredAdsLimit: 0,
     descriptionAr: '',
     descriptionEn: '',
+    isActive: true,
   });
 
   const fetchPackages = async () => {
@@ -57,6 +58,7 @@ export default function PackagesPage() {
         featuredAdsLimit: pkg.featuredAdsLimit,
         descriptionAr: pkg.descriptionAr || '',
         descriptionEn: pkg.descriptionEn || '',
+        isActive: pkg.isActive ?? true,
       });
     } else {
       setEditingPkg(null);
@@ -69,6 +71,7 @@ export default function PackagesPage() {
         featuredAdsLimit: 0,
         descriptionAr: '',
         descriptionEn: '',
+        isActive: true,
       });
     }
     setShowModal(true);

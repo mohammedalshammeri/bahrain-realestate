@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -20,8 +20,37 @@ export default function SystemPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Fetch existing system settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const { getSettings } = await import('@/lib/api/adminApi');
+        const response = await getSettings();
+        if (response?.data) {
+          const data = response.data;
+          setFormData(prev => ({
+            ...prev,
+            platformName: data['platformName'] || data['general.siteName'] || '',
+            contactEmail: data['contactEmail'] || data['general.contactEmail'] || '',
+            contactPhone: data['supportPhone'] || data['general.supportPhone'] || '',
+            defaultFreeAds: data['defaultAdLimit'] || '',
+            googleMapsApiKey: data['googleMapsApiKey'] || '',
+            termsAndConditions: data['termsAndConditions'] || '',
+            privacyPolicy: data['privacyPolicy'] || '',
+          }));
+        }
+      } catch (error) {
+        console.error('Failed to load system settings:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;

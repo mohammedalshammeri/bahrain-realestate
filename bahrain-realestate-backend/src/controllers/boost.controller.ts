@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { db } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import {
   createBoost,
@@ -98,6 +99,8 @@ export const getCompanyBoostsController = async (req: AuthRequest, res: Response
     }
 
     const boosts = await getCompanyBoosts(companyId, skip, limit);
+    const totalResult = await db.$queryRaw`SELECT COUNT(*)::int as count FROM boosts WHERE company_id = ${companyId}` as any[];
+    const total = totalResult?.[0]?.count || boosts.length;
 
     res.json({
       success: true,
@@ -106,7 +109,7 @@ export const getCompanyBoostsController = async (req: AuthRequest, res: Response
         pagination: {
           page,
           limit,
-          total: boosts.length, // In production, you'd want a separate count query
+          total,
         },
       },
     });

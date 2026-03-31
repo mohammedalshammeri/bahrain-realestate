@@ -128,8 +128,17 @@ export default function SystemEmployeesPage() {
     router.push(`/admin-users/${employeeId}`);
   };
 
-  const handleDeleteEmployee = (employeeId: number) => {
-    alert(t('common.comingSoon'));
+  const handleDeleteEmployee = async (employeeId: number) => {
+    if (!confirm(t('adminUsers.confirmDelete') || 'Are you sure you want to delete this employee?')) {
+      return;
+    }
+    try {
+      const { deleteSystemEmployee } = await import('@/lib/api/adminApi');
+      await deleteSystemEmployee(employeeId);
+      fetchEmployees(currentPage, search);
+    } catch (err: any) {
+      alert(err.message || t('adminUsers.deleteError') || 'Failed to delete employee');
+    }
   };
 
   const handlePreviousPage = () => {

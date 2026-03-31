@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, StyleSheet, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -30,6 +30,7 @@ export default function IndividualRegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
@@ -48,6 +49,11 @@ export default function IndividualRegisterScreen() {
 
     if (password !== confirmPassword) {
       showToast(t('individual.passwordMismatch') || 'Passwords do not match', 'error');
+      return;
+    }
+
+    if (!acceptTerms) {
+      showToast(t('auth.acceptTermsRequired') || 'Please accept terms & conditions', 'error');
       return;
     }
 
@@ -167,6 +173,20 @@ export default function IndividualRegisterScreen() {
               onSubmitEditing={handleRegister}
             />
 
+            <View style={styles.termsContainer}>
+              <Switch value={acceptTerms} onValueChange={setAcceptTerms} />
+              <View style={styles.termsTextRow}>
+                <Text style={styles.termsText}>{t('legal.acceptTermsPrefix')}</Text>
+                <TouchableOpacity onPress={() => router.push('/terms')}>
+                  <Text style={styles.termsLink}>{t('legal.termsAndConditions')}</Text>
+                </TouchableOpacity>
+                <Text style={styles.termsText}>{t('legal.and')}</Text>
+                <TouchableOpacity onPress={() => router.push('/privacy-policy')}>
+                  <Text style={styles.termsLink}>{t('legal.privacyPolicy')}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <Button
               title={t('individual.registerButton') || 'Create Account'}
               onPress={handleRegister}
@@ -192,6 +212,10 @@ const styles = StyleSheet.create({
   form: { width: '100%' },
   label: { fontSize: 16, marginBottom: 8, color: '#00305D', textAlign: 'auto' },
   input: { borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, marginBottom: 16, fontSize: 16, textAlign: 'auto', writingDirection: 'auto' },
+  termsContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  termsTextRow: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginStart: 10 },
+  termsText: { fontSize: 14, color: '#34495e' },
+  termsLink: { fontSize: 14, color: '#00305D', fontWeight: '700', textDecorationLine: 'underline' },
   button: { marginTop: 10 },
   loginLink: { marginTop: 16, alignItems: 'center' },
   loginLinkText: { color: '#00305D', fontWeight: '600' },

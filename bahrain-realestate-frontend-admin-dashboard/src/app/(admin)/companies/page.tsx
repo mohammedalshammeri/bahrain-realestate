@@ -326,7 +326,7 @@ export default function CompaniesPage() {
                            </span>
                         )}
                         <span className="text-gray-400">
-                          {t('companies.subscription.adsUsage', { used: 50 - (company.freeAdsRemaining || 0), left: company.freeAdsRemaining })}
+                          {t('companies.subscription.adsUsage', { used: 50 - (company.freeAdsRemaining || 0), left: company.freeAdsRemaining ?? 0 })}
                         </span>
                       </div>
                     </div>

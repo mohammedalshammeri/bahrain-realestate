@@ -5,11 +5,11 @@
     "version": "1.0.0",
     "scheme": "bahrain-property-hub",
     "orientation": "portrait",
-    "icon": "./assets/WhatsApp Image 2026-02-17 at 1.59.17 PM.jpeg",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/WhatsApp Image 2026-02-17 at 1.59.17 PM.jpeg",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -17,21 +17,29 @@
       "supportsTablet": true,
       "supportsRTL": true,
       "bundleIdentifier": "com.bahrainpropertyhub.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSPhotoLibraryUsageDescription": "This app requires access to your photo library to upload property images."
+        "NSPhotoLibraryUsageDescription": "This app requires access to your photo library to upload property images.",
+        "NSCameraUsageDescription": "This app requires access to your camera to take property photos directly.",
+        "NSPhotoLibraryAddUsageDescription": "This app requires access to save photos",
+        "NSLocationWhenInUseUsageDescription": "This app requires access to your location to show nearby properties.",
+        "LSApplicationQueriesSchemes": ["whatsapp", "tel", "mailto"]
       }
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/WhatsApp Image 2026-02-17 at 1.59.17 PM.jpeg",
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
       "supportsRTL": true,
       "package": "com.bahrainpropertyhub.app",
+      "versionCode": 1,
       "permissions": [
-        "INTERNET"
+        "INTERNET",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
       ],
-      "usesCleartextTraffic": true,
+      "usesCleartextTraffic": false,
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },

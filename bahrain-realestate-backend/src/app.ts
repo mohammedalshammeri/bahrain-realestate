@@ -1,11 +1,16 @@
 import express, { Express, Request, Response, NextFunction } from "express";
 import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
 import dotenv from "dotenv";
 import path from "path";
 import { errorHandler, AppError } from "./middleware/errorHandler";
+import { apiLimiter } from "./middleware/rateLimiter";
 
 // Load environment variables
 dotenv.config();
+
+const isProduction = process.env.NODE_ENV === "production";
 
 // Import routes
 import authRoutes from "./routes/auth.routes";
@@ -17,22 +22,55 @@ import individualRoutes from "./routes/individual.routes";
 
 const app: Express = express();
 
-// Middleware
-app.use(cors());
-// Increased body size limits for multiple video uploads
-app.use(express.json({ limit: '500mb' }));
-app.use(express.urlencoded({ extended: true, limit: '500mb' }));
+// Trust first proxy (nginx, ALB, etc.) so rate-limiter + IP detection work behind reverse proxy
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
 
-// Serve uploads directory - absolute path to ensure reliability
+// Security headers
+app.use(helmet());
+
+// CORS — restrict origins in production
+const allowedOrigins = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',')
+  : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:8081'];
+
+app.use(cors({
+  origin: isProduction
+    ? (origin, callback) => {
+        // Allow requests with no origin (mobile apps, Postman, server-to-server)
+        if (!origin || allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
+    : true, // Allow all origins in development
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Accept-Language'],
+}));
+
+// Body parsers — file uploads go through multer, NOT JSON body
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
+
+// HTTP request logging
+app.use(morgan(isProduction ? 'combined' : 'dev'));
+
+// Global API rate limiter (100 req/min per IP)
+app.use('/api', apiLimiter);
+
+// Serve uploads directory with cache headers
 const uploadsPath = path.join(process.cwd(), 'uploads');
-console.log(`Serving static files from: ${uploadsPath}`);
-app.use('/uploads', express.static(uploadsPath));
-
-// Request logging middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  console.log(`${req.method} ${req.path}`);
-  next();
-});
+app.use('/uploads', express.static(uploadsPath, {
+  maxAge: isProduction ? '7d' : 0,
+  etag: true,
+  lastModified: true,
+  setHeaders: (res) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+  },
+}));
 
 // Routes
 app.use("/api/auth", authRoutes);

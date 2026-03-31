@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, Alert, TouchableOpacity, Text } from 'react-native';
+import { View, StyleSheet, Alert, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from '../src/components/MapWrapper';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../src/components/Button';
 import { textAlignStart } from '../src/utils/rtl';
 import { useLocationStore } from '../src/store/locationStore';
+import * as Location from 'expo-location';
 
 interface LocationData {
   latitude: number;
@@ -32,6 +33,8 @@ export default function LocationPicker() {
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  const [gpsLoading, setGpsLoading] = useState(false);
 
   useEffect(() => {
     // If location data is passed from property details, center on it
@@ -87,19 +90,43 @@ export default function LocationPicker() {
     }
   };
 
-  const handleUseCurrentLocation = () => {
-    // In a real app, you'd use geolocation API here
-    // For now, we'll just center on Bahrain
-    const bahrainLocation = {
-      latitude: 26.0667,
-      longitude: 50.5577,
-    };
-    setSelectedLocation(bahrainLocation);
-    setRegion({
-      ...bahrainLocation,
-      latitudeDelta: 0.01,
-      longitudeDelta: 0.01,
-    });
+  const handleUseCurrentLocation = async () => {
+    setGpsLoading(true);
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          t('location.permissionDenied') || 'Permission Denied',
+          t('location.permissionDeniedMsg') || 'Please allow location access to use this feature'
+        );
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.High,
+      });
+
+      const { latitude, longitude } = position.coords;
+      setSelectedLocation({ latitude, longitude });
+      setRegion({
+        latitude,
+        longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
+    } catch (error) {
+      console.error('GPS error:', error);
+      // Fallback to Bahrain center
+      const bahrainLocation = { latitude: 26.0667, longitude: 50.5577 };
+      setSelectedLocation(bahrainLocation);
+      setRegion({ ...bahrainLocation, latitudeDelta: 0.01, longitudeDelta: 0.01 });
+      Alert.alert(
+        t('location.gpsError') || 'GPS Error',
+        t('location.gpsErrorMsg') || 'Could not get your location. Showing Bahrain center.'
+      );
+    } finally {
+      setGpsLoading(false);
+    }
   };
 
   const handleSkipLocation = () => {

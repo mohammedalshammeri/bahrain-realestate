@@ -1181,7 +1181,7 @@ export const createFeaturedPackage = async (req: AuthRequest, res: Response) => 
       });
     }
 
-    if (employeeRole !== 'admin' && employeeRole !== 'manager') {
+    if (employeeRole !== 'OWNER' && employeeRole !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: "Insufficient permissions",
@@ -1245,7 +1245,7 @@ export const cancelFeaturedPackage = async (req: AuthRequest, res: Response) => 
       });
     }
 
-    if (employeeRole !== 'admin' && employeeRole !== 'manager') {
+    if (employeeRole !== 'OWNER' && employeeRole !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: "Insufficient permissions",
@@ -1286,7 +1286,7 @@ export const extendFeaturedPackage = async (req: AuthRequest, res: Response) => 
       });
     }
 
-    if (employeeRole !== 'admin' && employeeRole !== 'manager') {
+    if (employeeRole !== 'OWNER' && employeeRole !== 'MANAGER') {
       return res.status(403).json({
         success: false,
         message: "Insufficient permissions",

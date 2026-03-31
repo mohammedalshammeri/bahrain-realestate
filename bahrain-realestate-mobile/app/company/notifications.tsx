@@ -1,22 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../src/store/authStore';
 import { rowDirection, textAlignStart } from '../../src/utils/rtl';
+import api from '../../src/api/api';
 
 interface Notification {
-  id: string;
-  type: 'property_approved' | 'property_rejected' | 'featured_expired' | 'featured_activated' | 'payment_received' | 'system';
+  id: number;
+  type: string;
   title: string;
   message: string;
-  createdAt: string;
-  isRead: boolean;
-  metadata?: {
-    propertyId?: string;
-    packageId?: string;
-    amount?: number;
-  };
+  created_at: string;
+  is_read: boolean;
+  data?: any;
 }
 
 export default function Notifications() {
@@ -26,6 +23,9 @@ export default function Notifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const PAGE_SIZE = 20;
 
   const textAlign = textAlignStart();
   const flexDirection = rowDirection();
@@ -34,66 +34,40 @@ export default function Notifications() {
     loadNotifications();
   }, []);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async (reset = true) => {
     if (!company) return;
 
     try {
-      // In a real app, this would be an API call
-      // For now, we'll use mock data
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          type: 'property_approved',
-          title: t('notifications.propertyApproved') || 'Property Approved',
-          message: t('notifications.propertyApprovedMsg') || 'Your property listing has been approved and is now live.',
-          createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-          isRead: false,
-          metadata: { propertyId: 'prop-123' },
-        },
-        {
-          id: '2',
-          type: 'featured_activated',
-          title: t('notifications.featuredActivated') || 'Featured Package Activated',
-          message: t('notifications.featuredActivatedMsg') || 'Your 14-day featured package has been activated.',
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-          isRead: true,
-          metadata: { packageId: 'feat-456' },
-        },
-        {
-          id: '3',
-          type: 'featured_expired',
-          title: t('notifications.featuredExpired') || 'Featured Package Expired',
-          message: t('notifications.featuredExpiredMsg') || 'Your featured package has expired. Renew to maintain visibility.',
-          createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days ago
-          isRead: false,
-          metadata: { packageId: 'feat-789' },
-        },
-        {
-          id: '4',
-          type: 'payment_received',
-          title: t('notifications.paymentReceived') || 'Payment Received',
-          message: t('notifications.paymentReceivedMsg') || 'Payment of BD 8.00 has been received for your featured package.',
-          createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(), // 5 days ago
-          isRead: true,
-          metadata: { amount: 8.00 },
-        },
-      ];
+      const skip = reset ? 0 : page * PAGE_SIZE;
+      const response = await api.get('/company/notifications', {
+        params: { skip, take: PAGE_SIZE },
+      });
 
-      setNotifications(mockNotifications);
+      if (response.data?.success) {
+        const { notifications: fetched, pagination } = response.data.data;
+        if (reset) {
+          setNotifications(fetched);
+          setPage(1);
+        } else {
+          setNotifications(prev => [...prev, ...fetched]);
+          setPage(prev => prev + 1);
+        }
+        setHasMore(pagination?.hasMore ?? false);
+      }
     } catch (error) {
       console.error('Failed to load notifications:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [company, page]);
 
-  const markAsRead = async (notificationId: string) => {
+  const markAsRead = async (notificationId: number) => {
     try {
-      // In a real app, this would be an API call
+      await api.patch(`/company/notifications/${notificationId}/read`);
       setNotifications(prev =>
         prev.map(notif =>
-          notif.id === notificationId ? { ...notif, isRead: true } : notif
+          notif.id === notificationId ? { ...notif, is_read: true } : notif
         )
       );
     } catch (error) {
@@ -103,9 +77,9 @@ export default function Notifications() {
 
   const markAllAsRead = async () => {
     try {
-      // In a real app, this would be an API call
+      await api.patch('/company/notifications/mark-all-read');
       setNotifications(prev =>
-        prev.map(notif => ({ ...notif, isRead: true }))
+        prev.map(notif => ({ ...notif, is_read: true }))
       );
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
@@ -114,7 +88,7 @@ export default function Notifications() {
 
   const onRefresh = () => {
     setRefreshing(true);
-    loadNotifications();
+    loadNotifications(true);
   };
 
   const formatDate = (dateString: string) => {
@@ -142,17 +116,23 @@ export default function Notifications() {
       case 'featured_expired':
         return '⏰';
       case 'payment_received':
+      case 'payment_success':
         return '💰';
+      case 'boost_activated':
+        return '🚀';
+      case 'boost_expired':
+        return '⏳';
       default:
         return '📢';
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3498db" />
         <Text style={styles.loadingText}>{t('common.loading') || 'Loading...'}</Text>
       </View>
     );
@@ -192,10 +172,10 @@ export default function Notifications() {
               key={notification.id}
               style={[
                 styles.notificationItem,
-                !notification.isRead && styles.unreadNotification,
+                !notification.is_read && styles.unreadNotification,
                 { flexDirection },
               ]}
-              onPress={() => !notification.isRead && markAsRead(notification.id)}
+              onPress={() => !notification.is_read && markAsRead(notification.id)}
             >
               <View style={styles.notificationIcon}>
                 <Text style={styles.iconText}>{getNotificationIcon(notification.type)}</Text>
@@ -209,11 +189,11 @@ export default function Notifications() {
                   {notification.message}
                 </Text>
                 <Text style={[styles.notificationTime, { textAlign }]}>
-                  {formatDate(notification.createdAt)}
+                  {formatDate(notification.created_at)}
                 </Text>
               </View>
 
-              {!notification.isRead && <View style={styles.unreadDot} />}
+              {!notification.is_read && <View style={styles.unreadDot} />}
             </TouchableOpacity>
           ))
         )}

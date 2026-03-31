@@ -1187,7 +1187,7 @@ export default function PropertiesPage() {
                             </span>
                          ) : property.isExpired ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                              {t('properties.duration.expired', 'Expired')}
+                              {t('properties.duration.expired', { defaultValue: 'Expired' })}
                             </span>
                          ) : (
                             property.expiresAt ? (
@@ -1199,7 +1199,7 @@ export default function PropertiesPage() {
                                   />
                                 </div>
                             ) : (
-                              <span className="text-gray-400 text-xs">{t('properties.duration.notSet', 'Not set')}</span>
+                              <span className="text-gray-400 text-xs">{t('properties.duration.notSet', { defaultValue: 'Not set' })}</span>
                             )
                          )}
                       {property.id > 0 && !['sold', 'rented'].includes(property.status?.toLowerCase() || '') && (
@@ -1813,17 +1813,17 @@ export default function PropertiesPage() {
                       <div className="rounded-lg border border-gray-200 dark:border-gray-800 p-4 bg-gray-50 dark:bg-gray-800/40 mb-2">
                         <div className="flex items-center justify-between">
                           <div className="text-sm font-medium text-gray-900 dark:text-white">
-                            {t('properties.duration.remainingLabel', language === 'ar' ? 'الوقت المتبقي' : 'Remaining time')}
+                            {t('properties.duration.remainingLabel', { defaultValue: language === 'ar' ? 'الوقت المتبقي' : 'Remaining time' })}
                           </div>
                           <div className={previewProperty.isExpired || (previewProperty.expiresAt && getRemainingTimeFromExpiresAt(previewProperty.expiresAt)?.days === 0 && getRemainingTimeFromExpiresAt(previewProperty.expiresAt)?.hours === 0 && getRemainingTimeFromExpiresAt(previewProperty.expiresAt)?.minutes === 0) ? 'text-red-600 font-bold' : 'text-gray-900 dark:text-white'}>
                             {(previewProperty.isExpired || (previewProperty.expiresAt && getRemainingTimeFromExpiresAt(previewProperty.expiresAt)?.days === 0 && getRemainingTimeFromExpiresAt(previewProperty.expiresAt)?.hours === 0 && getRemainingTimeFromExpiresAt(previewProperty.expiresAt)?.minutes === 0))
-                              ? t('properties.duration.expired', 'Expired')
+                              ? t('properties.duration.expired', { defaultValue: 'Expired' })
                               : formatRemainingTime(previewProperty.remainingTime || getRemainingTimeFromExpiresAt(previewProperty.expiresAt))}
                           </div>
                         </div>
                         {previewProperty.expiresAt && (
                           <div className="text-xs text-gray-500 mt-1">
-                            {t('properties.duration.expiresAtLabel', language === 'ar' ? 'تاريخ الانتهاء:' : 'Expires at:')}{' '}
+                            {t('properties.duration.expiresAtLabel', { defaultValue: language === 'ar' ? 'تاريخ الانتهاء:' : 'Expires at:' })}{' '}
                             {new Date(previewProperty.expiresAt).toLocaleString(language === 'ar' ? 'ar-BH' : 'en-US')}
                           </div>
                         )}
@@ -1861,7 +1861,7 @@ export default function PropertiesPage() {
                           return (
                             <span className={getStatusBadge(statusKey)}>
                               {displayStatus
-                                ? t(`properties.status.${statusKey}`, displayStatus)
+                                ? t(`properties.status.${statusKey}`, { defaultValue: displayStatus })
                                 : previewProperty.status}
                             </span>
                           );

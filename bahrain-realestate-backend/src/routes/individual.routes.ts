@@ -13,6 +13,7 @@ import {
 	registerPushTokenController,
 	unregisterPushTokenController,
 } from "../controllers/push.controller";
+import { deleteIndividualAccountController } from "../controllers/deleteAccount.controller";
 
 const router = Router();
 
@@ -24,5 +25,6 @@ router.patch("/properties/:id", individualAuthMiddleware, updateMyProperty);
 router.post("/properties/:id/submit", individualAuthMiddleware, submitMyProperty);
 router.post("/push/register", individualAuthMiddleware, registerPushTokenController);
 router.post("/push/unregister", individualAuthMiddleware, unregisterPushTokenController);
+router.delete("/account", individualAuthMiddleware, deleteIndividualAccountController);
 
 export default router;

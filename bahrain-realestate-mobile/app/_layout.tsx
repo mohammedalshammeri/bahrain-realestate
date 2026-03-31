@@ -10,6 +10,7 @@ import { useLocationStore } from '../src/store/locationStore';
 import { ToastProvider } from '../src/context/ToastContext';
 import { ActivityIndicator, Image, View } from 'react-native';
 import { BottomNav } from '../src/components/BottomNav';
+import { ErrorBoundary } from '../src/components/ErrorBoundary';
 import '../src/i18n'; // Initialize i18n
 
 export default function Layout() {
@@ -46,9 +47,10 @@ export default function Layout() {
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ToastProvider>
-        <StatusBar style="dark" />
+    <ErrorBoundary>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <ToastProvider>
+          <StatusBar style="dark" />
         {/* paddingBottom أعلى من ارتفاع الفوتر ليكون هناك فراغ واضح بين آخر المحتوى و BottomNav */}
         <View style={{ flex: 1, paddingBottom: 96 }}>
           <Stack
@@ -129,5 +131,6 @@ export default function Layout() {
         </View>
       </ToastProvider>
     </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

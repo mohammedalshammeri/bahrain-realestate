@@ -1,5 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/**
+ * Decode a JWT payload without external libraries (Edge-compatible).
+ * Returns null if the token structure is invalid or expired.
+ */
+function decodeJwt(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+
+    const payload = JSON.parse(
+      atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+    );
+
+    // Check expiration
+    if (payload.exp && Date.now() >= payload.exp * 1000) {
+      return null; // Token expired
+    }
+
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
 export function middleware(request: NextRequest) {
   // Get the pathname of the request
   const { pathname } = request.nextUrl;
@@ -12,8 +36,11 @@ export function middleware(request: NextRequest) {
   const token = cookieToken || headerToken;
   const isValidToken = token && token.trim() !== '' && token !== 'undefined' && token !== 'null';
 
-  // If no valid token is found, redirect to login
-  if (!isValidToken) {
+  // Decode and validate JWT structure + expiration
+  const payload = isValidToken ? decodeJwt(token!) : null;
+
+  // If no valid token or JWT is invalid/expired, redirect to login
+  if (!payload) {
     const loginUrl = new URL('/auth/login', request.url);
     
     // Add cache-busting parameter to ensure fresh redirect
@@ -37,12 +64,14 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  // If token exists, allow the request to continue
+  // If token is valid, allow the request to continue
   const response = NextResponse.next();
   
   // Add security headers
   response.headers.set('X-Frame-Options', 'DENY');
   response.headers.set('X-Content-Type-Options', 'nosniff');
+  response.headers.set('X-XSS-Protection', '1; mode=block');
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   
   return response;
 }

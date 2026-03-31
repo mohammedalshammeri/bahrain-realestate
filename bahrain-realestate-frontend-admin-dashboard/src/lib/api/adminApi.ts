@@ -70,7 +70,7 @@ export interface SubscriptionRequest {
     name: string;
     email: string;
     phone: string;
-    subscriptionPlan: string;
+    subscriptionPlan?: string;
   };
   package: SubscriptionPackage;
 }
@@ -481,21 +481,6 @@ class AdminApiService {
     });
   }
 
-  async updatePropertyDetails(
-    id: number,
-    data: Partial<
-      Pick<
-        Property,
-        'title' | 'price' | 'purpose' | 'type' | 'governorate' | 'area' | 'bedrooms' | 'bathrooms' | 'description'
-      >
-    >,
-  ) {
-    return this.request(`/properties/${id}` , {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    });
-  }
-
   async getExpiringProperties() {
     return this.request('/properties/expiring');
   }
@@ -771,6 +756,10 @@ class AdminApiService {
     return this.request('/profile');
   }
 
+  async getSettings() {
+    return this.request('/settings');
+  }
+
   async updateSettings(settings: Record<string, any>) {
     return this.request('/settings', {
       method: 'PUT',
@@ -890,6 +879,10 @@ export const getPropertyById = (id: number) => {
 
 export const getProfile = () => {
   return adminApi.getProfile();
+};
+
+export const getSettings = () => {
+  return adminApi.getSettings();
 };
 
 export const updateSettings = (settings: Record<string, any>) => {
@@ -1085,24 +1078,6 @@ export const deletePackage = async (id: number) => {
   if (!res.ok) throw new Error('Failed to delete package');
   return res.json();
 };
-
-export interface SubscriptionRequest {
-  id: number;
-  companyId: number;
-  subscriptionPackageId: number;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  adminNotes?: string;
-  createdAt: string;
-  updatedAt: string;
-  company: {
-    id: number;
-    name: string;
-    email: string;
-    phone: string;
-    subscriptionPlan?: string;
-  };
-  package: SubscriptionPackage;
-}
 
 export const getSubscriptionRequests = async () => {
   const token = localStorage.getItem('adminToken');

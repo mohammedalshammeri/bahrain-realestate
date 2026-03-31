@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { db } from '../config/database';
 import { AuthRequest } from '../middleware/auth';
 import {
   createPaymentIntent,
@@ -161,6 +162,8 @@ export const getCompanyPaymentsController = async (req: AuthRequest, res: Respon
     }
 
     const payments = await getCompanyPayments(companyId, skip, limit);
+    const totalResult = await db.$queryRaw`SELECT COUNT(*)::int as count FROM enhanced_payments WHERE company_id = ${companyId}` as any[];
+    const total = totalResult?.[0]?.count || payments.length;
 
     res.json({
       success: true,
@@ -169,7 +172,7 @@ export const getCompanyPaymentsController = async (req: AuthRequest, res: Respon
         pagination: {
           page,
           limit,
-          total: payments.length, // In production, you'd want a separate count query
+          total,
         },
       },
     });

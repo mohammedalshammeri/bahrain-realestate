@@ -1,26 +1,54 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { updateSettings, ApiError } from '@/lib/api/adminApi';
+import { updateSettings, getSettings, ApiError } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function SettingsPage() {
   const { t } = useLanguage();
   // State for general settings
   const [generalSettings, setGeneralSettings] = useState({
-    websiteName: 'Bahrain Property Hub',
-    supportEmail: 'support@propertyhub.bh',
-    supportPhone: '+973 1234 5678'
+    websiteName: '',
+    supportEmail: '',
+    supportPhone: ''
   });
 
   // State for payment & AFS settings
   const [paymentSettings, setPaymentSettings] = useState({
-    afsMerchantId: 'BPH_MERCHANT_001',
+    afsMerchantId: '',
     afsApiKey: '',
-    afsCallbackUrl: 'https://admin.propertyhub.bh/callback/afs'
+    afsCallbackUrl: ''
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+
+  // Fetch current settings on mount
+  useEffect(() => {
+    const loadSettings = async () => {
+      try {
+        const response = await getSettings();
+        if (response?.data) {
+          const data = response.data;
+          setGeneralSettings({
+            websiteName: data['general.siteName'] || 'Bahrain Property Hub',
+            supportEmail: data['general.contactEmail'] || '',
+            supportPhone: data['general.supportPhone'] || '',
+          });
+          setPaymentSettings({
+            afsMerchantId: data['payment.merchantId'] || '',
+            afsApiKey: data['payment.apiKey'] || '',
+            afsCallbackUrl: data['payment.webhookUrl'] || '',
+          });
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    };
+    loadSettings();
+  }, []);
 
   const handleGeneralChange = (field: string, value: string) => {
     setGeneralSettings(prev => ({

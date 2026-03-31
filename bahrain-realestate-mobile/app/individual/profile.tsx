@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TextInput, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import api from '../../src/api/api';
@@ -23,6 +23,11 @@ export default function IndividualProfileScreen() {
   const [fullName, setFullName] = useState(user?.fullName || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [loading, setLoading] = useState(false);
+  
+  // Account Deletion State
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const textAlign = 'auto' as const;
   const writingDirection = 'auto' as const;
@@ -70,6 +75,34 @@ export default function IndividualProfileScreen() {
     }
   };
 
+  const logout = useIndividualAuthStore((s) => s.logout);
+
+  const handleDeleteAccount = async () => {
+    if (!deletePassword) {
+      showToast(t('legal.deleteAccountPasswordPlaceholder') || 'Please enter password', 'error');
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const res = await api.delete('/individual/account', {
+        data: { password: deletePassword }
+      });
+
+      if (res.data.success) {
+        showToast(t('legal.deleteAccountSuccess') || 'Account deleted successfully', 'success');
+        setDeleteModalVisible(false);
+        await logout(); // Using individual auth logout
+      } else {
+        showToast(res.data.message || t('common.error'), 'error');
+      }
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || t('legal.deleteAccountError') || 'Error deleting account', 'error');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
@@ -110,8 +143,54 @@ export default function IndividualProfileScreen() {
           </View>
 
           <Button title={t('common.save') || 'Save'} onPress={handleSave} loading={loading} />
+
+          <TouchableOpacity 
+            style={styles.deleteButtonContainer} 
+            onPress={() => setDeleteModalVisible(true)}
+          >
+            <Text style={styles.deleteButtonText}>{t('legal.deleteAccount') || 'Delete Account'}</Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal
+        visible={deleteModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setDeleteModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>{t('legal.deleteAccountConfirmTitle') || 'Delete Account?'}</Text>
+            <Text style={styles.modalText}>{t('legal.deleteAccountConfirmMessage') || 'This action cannot be undone.'}</Text>
+            
+            <TextInput
+              style={[styles.input, { width: '100%' }]}
+              placeholder={t('legal.deleteAccountPasswordPlaceholder') || 'Enter current password'}
+              secureTextEntry
+              value={deletePassword}
+              onChangeText={setDeletePassword}
+            />
+            
+            <View style={styles.modalActions}>
+              <Button 
+                title={t('common.cancel') || 'Cancel'} 
+                onPress={() => setDeleteModalVisible(false)} 
+                variant="outline" 
+                style={styles.modalActionBtn}
+              />
+              <Button 
+                title={t('common.delete') || 'Delete'} 
+                onPress={handleDeleteAccount} 
+                variant="danger"
+                loading={deleting}
+                style={styles.modalActionBtn}
+              />
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -128,4 +207,12 @@ const styles = StyleSheet.create({
   langButtonActive: { backgroundColor: '#007bff', borderColor: '#007bff' },
   langText: { fontSize: 16, color: '#333' },
   langTextActive: { color: '#fff', fontWeight: 'bold' },
+  deleteButtonContainer: { marginTop: 40, padding: 15, alignItems: 'center', borderTopWidth: 1, borderTopColor: '#f1f1f1' },
+  deleteButtonText: { color: '#ef4444', fontSize: 16, fontWeight: '600' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalContent: { backgroundColor: 'white', padding: 24, borderRadius: 16, width: '100%', alignItems: 'center' },
+  modalTitle: { fontSize: 20, fontWeight: 'bold', color: '#1f2937', marginBottom: 12 },
+  modalText: { fontSize: 15, color: '#4b5563', textAlign: 'center', marginBottom: 20 },
+  modalActions: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: 20, gap: 10 },
+  modalActionBtn: { flex: 1 },
 });

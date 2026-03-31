@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AdminLayout } from '@/components/layout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { setupLogoutListener, isAuthenticated as checkAuth } from '@/lib/auth/logout';
 
 interface AdminLayoutPageProps {
@@ -72,7 +73,9 @@ export default function AdminLayoutPage({ children }: AdminLayoutPageProps) {
   if (isAuthenticated) {
     return (
       <AdminLayout>
-        {children}
+        <ErrorBoundary>
+          {children}
+        </ErrorBoundary>
       </AdminLayout>
     );
   }

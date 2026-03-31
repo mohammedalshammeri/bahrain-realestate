@@ -30,40 +30,32 @@ export default function PaymentScreen() {
 
     setLoading(true);
 
-    // Simulate payment processing delay
-    setTimeout(async () => {
-      try {
-        // In a real app, we would process payment with a gateway here
-        // and then call our backend to update the property status
-        
-        // Mock backend call
-        // await api.post(`/company/properties/${propertyId}/feature`, {
-        //   days: Number(days),
-        //   transactionId: 'mock_tx_' + Date.now()
-        // });
+    try {
+      // Create the featured package via backend API
+      await api.post('/company/featured-packages', {
+        propertyId: Number(propertyId),
+        duration: Number(days),
+      });
 
-        // Since backend might not be ready, we'll just simulate success
-        // and maybe update local state if we were using a store
-        
-        Alert.alert(
-          t('featured.paymentSuccess'),
-          t('featured.paymentSuccessMsg'),
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                router.dismissAll();
-                router.replace('/company/properties');
-              }
+      Alert.alert(
+        t('featured.paymentSuccess'),
+        t('featured.paymentSuccessMsg'),
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              router.dismissAll();
+              router.replace('/company/properties');
             }
-          ]
-        );
-      } catch (error) {
-        Alert.alert(t('common.error'), t('featured.paymentError'));
-      } finally {
-        setLoading(false);
-      }
-    }, 2000);
+          }
+        ]
+      );
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || t('featured.paymentError');
+      Alert.alert(t('common.error'), msg);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

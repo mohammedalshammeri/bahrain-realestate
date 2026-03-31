@@ -11,17 +11,27 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  console.error("Error:", error);
-
   const status = error.status || 500;
-  const message = error.message || "Internal Server Error";
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // Log full error details server-side
+  if (isProduction) {
+    console.error(`[ERROR] ${req.method} ${req.path} — ${status} — ${error.message}`);
+  } else {
+    console.error("Error:", error);
+  }
+
+  // In production, hide internal error messages for 500s
+  const message = isProduction && status >= 500
+    ? "Internal Server Error"
+    : error.message || "Internal Server Error";
   const code = error.code || "INTERNAL_ERROR";
 
   res.status(status).json({
     success: false,
     code,
     message,
-    ...(process.env.NODE_ENV === "development" && { stack: error.stack }),
+    ...(!isProduction && { stack: error.stack }),
   });
 };
 

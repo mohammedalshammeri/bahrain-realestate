@@ -59,9 +59,13 @@ import {
   getPushNotificationHistoryController,
 } from "../controllers/push.controller";
 import { companyEmployeeAuthMiddleware, AuthRequest } from "../middleware/auth";
+import { deleteCompanyAccountController } from "../controllers/deleteAccount.controller";
 import { upload } from "../middleware/upload";
 
 const router = Router();
+
+// Account management
+router.delete("/account", companyEmployeeAuthMiddleware, deleteCompanyAccountController);
 
 // Company profile
 router.get("/profile", companyEmployeeAuthMiddleware, getProfile);

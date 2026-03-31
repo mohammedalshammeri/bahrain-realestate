@@ -279,7 +279,16 @@ export default function CompanyRegister() {
             value={formData.acceptTerms}
             onValueChange={(val) => setFormData({...formData, acceptTerms: val})}
           />
-          <Text style={[styles.termsText, { marginStart: 10 }]}>{t('auth.acceptTerms')}</Text>
+          <View style={[styles.termsTextRow, { marginStart: 10 }]}> 
+            <Text style={styles.termsText}>{t('legal.acceptTermsPrefix')}</Text>
+            <TouchableOpacity onPress={() => router.push('/terms')}>
+              <Text style={styles.termsLink}>{t('legal.termsAndConditions')}</Text>
+            </TouchableOpacity>
+            <Text style={styles.termsText}>{t('legal.and')}</Text>
+            <TouchableOpacity onPress={() => router.push('/privacy-policy')}>
+              <Text style={styles.termsLink}>{t('legal.privacyPolicy')}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Button 
@@ -346,9 +355,21 @@ const styles = StyleSheet.create({
     marginTop: 20,
     alignItems: 'center',
   },
+  termsTextRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+  },
   termsText: {
     fontSize: 14,
     color: '#34495e',
+  },
+  termsLink: {
+    fontSize: 14,
+    color: '#00305D',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   submitButton: {
     marginTop: 30,

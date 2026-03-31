@@ -204,6 +204,18 @@ export const registerIndividual = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: "Password is required" });
     }
 
+    if (!fullName || !fullName.trim()) {
+      return res.status(400).json({ success: false, message: "Full name is required" });
+    }
+
+    if (!email && !phone) {
+      return res.status(400).json({ success: false, message: "Email or phone is required" });
+    }
+
+    if (password.length < 6) {
+      return res.status(400).json({ success: false, message: "Password must be at least 6 characters" });
+    }
+
     const result = await registerIndividualService({
       fullName,
       email,
@@ -444,38 +456,6 @@ export const registerCompanyWithOwner = async (req: Request, res: Response) => {
   }
 };
 
-// اختبار البيانات
-export const testData = async (req: Request, res: Response) => {
-  try {
-    const employees = await prisma.companyEmployee.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        isActive: true,
-        company: {
-          select: {
-            name: true,
-            status: true
-          }
-        }
-      }
-    });
-
-    res.json({
-      success: true,
-      message: "Test data retrieved successfully",
-      data: employees
-    });  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error retrieving test data",
-      error: error instanceof Error ? error.message : "Unknown error"
-    });
-  }
-};
-
 export const logout = async (req: AuthRequest, res: Response) => {
   try {
     res.status(200).json({
@@ -498,11 +478,21 @@ export const refreshToken = async (req: Request, res: Response) => {
       });
     }
 
-    await validateTokenService(token);
+    const decoded = await validateTokenService(token);
+
+    // Issue a new token with the same payload
+    const payload: Record<string, any> = {};
+    if (typeof decoded === 'object' && decoded !== null) {
+      const { iat, exp, ...rest } = decoded as Record<string, any>;
+      Object.assign(payload, rest);
+    }
+
+    const newToken = generateToken(payload);
 
     res.status(200).json({
       success: true,
-      message: "Token is valid",
+      message: "Token refreshed successfully",
+      data: { token: newToken },
     });
   } catch (error) {
     if (error instanceof AppError) {

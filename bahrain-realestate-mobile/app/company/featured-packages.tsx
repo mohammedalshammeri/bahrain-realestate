@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../src/components/Button';
 import { useAuthStore } from '../../src/store/authStore';
 import { rowDirection, textAlignStart } from '../../src/utils/rtl';
+import api from '../../src/api/api';
 
 interface FeaturedPackage {
   id: string;
@@ -21,48 +22,51 @@ export default function FeaturedPackages() {
   const { company } = useAuthStore();
   const [selectedPackage, setSelectedPackage] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [properties, setProperties] = useState<any[]>([]);
+  const [loadingProps, setLoadingProps] = useState(false);
 
   const textAlign = textAlignStart();
   const flexDirection = rowDirection();
 
+  // Pricing tiers – these could be fetched from a backend settings endpoint in the future
   const packages: FeaturedPackage[] = [
     {
       id: '7days',
-      name: t('featured.packages.basic.name'),
+      name: t('featured.packages.basic.name') || 'Basic',
       duration: 7,
       price: 5.00,
-      description: t('featured.packages.basic.description'),
+      description: t('featured.packages.basic.description') || '7 days of featured visibility',
       features: [
-        t('featured.packages.basic.feature1'),
-        t('featured.packages.basic.feature2'),
-        t('featured.packages.basic.feature3'),
+        t('featured.packages.basic.feature1') || 'Priority listing for 7 days',
+        t('featured.packages.basic.feature2') || 'Featured badge on listing',
+        t('featured.packages.basic.feature3') || 'Increased visibility',
       ],
     },
     {
       id: '14days',
-      name: t('featured.packages.standard.name'),
+      name: t('featured.packages.standard.name') || 'Standard',
       duration: 14,
       price: 8.00,
-      description: t('featured.packages.standard.description'),
+      description: t('featured.packages.standard.description') || '14 days of featured visibility',
       features: [
-        t('featured.packages.standard.feature1'),
-        t('featured.packages.standard.feature2'),
-        t('featured.packages.standard.feature3'),
-        t('featured.packages.standard.feature4'),
+        t('featured.packages.standard.feature1') || 'Priority listing for 14 days',
+        t('featured.packages.standard.feature2') || 'Featured badge on listing',
+        t('featured.packages.standard.feature3') || 'Top placement in search',
+        t('featured.packages.standard.feature4') || 'Social media promotion',
       ],
     },
     {
       id: '30days',
-      name: t('featured.packages.premium.name'),
+      name: t('featured.packages.premium.name') || 'Premium',
       duration: 30,
       price: 12.00,
-      description: t('featured.packages.premium.description'),
+      description: t('featured.packages.premium.description') || '30 days of featured visibility',
       features: [
-        t('featured.packages.premium.feature1'),
-        t('featured.packages.premium.feature2'),
-        t('featured.packages.premium.feature3'),
-        t('featured.packages.premium.feature4'),
-        t('featured.packages.premium.feature5'),
+        t('featured.packages.premium.feature1') || 'Priority listing for 30 days',
+        t('featured.packages.premium.feature2') || 'Featured badge on listing',
+        t('featured.packages.premium.feature3') || 'Top placement in search',
+        t('featured.packages.premium.feature4') || 'Social media promotion',
+        t('featured.packages.premium.feature5') || 'Email newsletter inclusion',
       ],
     },
   ];
@@ -73,35 +77,18 @@ export default function FeaturedPackages() {
       return;
     }
 
-    setLoading(true);
-    try {
-      // Here you would integrate with your payment system
-      // For now, we'll simulate the purchase
-      Alert.alert(
-        t('featured.purchase.title') || 'Purchase Featured Package',
-        t('featured.purchase.confirm') || 'Are you sure you want to purchase this package?',
-        [
-          {
-            text: t('common.cancel') || 'Cancel',
-            style: 'cancel',
-          },
-          {
-            text: t('common.confirm') || 'Confirm',
-            onPress: () => {
-              // Navigate to property selection or payment
-              router.push({
-                pathname: '/company/select-property',
-                params: { packageId, action: 'featured' }
-              });
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      Alert.alert(t('common.error') || 'Error', t('featured.purchase.error') || 'Failed to process purchase');
-    } finally {
-      setLoading(false);
-    }
+    const pkg = packages.find(p => p.id === packageId);
+    if (!pkg) return;
+
+    // Navigate to select-property screen with package info
+    router.push({
+      pathname: '/company/select-property-feature',
+      params: {
+        days: String(pkg.duration),
+        amount: String(pkg.price),
+        packageName: pkg.name,
+      },
+    });
   };
 
   const formatPrice = (price: number) => {

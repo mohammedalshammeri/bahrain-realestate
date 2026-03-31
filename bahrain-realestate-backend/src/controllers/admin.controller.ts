@@ -19,39 +19,7 @@ export const adminLogin = async (req: Request, res: Response) => {
       });
     }
 
-    // Default admin credentials
-    const adminCredentials = {
-      username: 'admin',
-      password: 'admin123',
-      id: 0, // Use 0 for hardcoded admin to avoid conflict with DB IDs
-      name: 'مدير النظام'
-    };
-
-    // 1. Check Hardcoded Admin
-    if (username === adminCredentials.username && password === adminCredentials.password) {
-      const token = generateToken({
-        adminId: adminCredentials.id,
-        role: 'SUPER_ADMIN', // Hardcoded admin is Super Admin
-        username: adminCredentials.username
-      });
-
-      return res.json({
-        success: true,
-        message: "تم تسجيل الدخول بنجاح",
-        data: {
-          token,
-          admin: {
-            id: adminCredentials.id,
-            username: adminCredentials.username,
-            name: adminCredentials.name,
-            role: 'SUPER_ADMIN'
-          }
-        }
-      });
-    }
-
-    // 2. Check Database Admin (by Email)
-    // The frontend sends 'username', but we treat it as email for DB users
+    // Check Database Admin (by Email)
     const dbAdmin = await prisma.admin.findUnique({
       where: { email: username }
     });
@@ -329,8 +297,32 @@ export const deleteCompany = async (req: Request, res: Response) => {
       });
     }
 
-    await prisma.company.delete({
-      where: { id: companyId }
+    // Use transaction to delete all related entities
+    await prisma.$transaction(async (tx) => {
+      // Delete property images first (depends on properties)
+      await tx.propertyImage.deleteMany({ where: { property: { companyId } } });
+      // Delete ads (depends on properties)
+      await tx.ad.deleteMany({ where: { companyId } });
+      // Delete complaints referencing this company
+      await tx.complaint.deleteMany({ where: { companyId } });
+      await tx.complaint.deleteMany({ where: { submitterCompanyId: companyId } });
+      // Delete properties
+      await tx.property.deleteMany({ where: { companyId } });
+      // Delete individual property offers
+      await tx.individualPropertyCompanyOffer.deleteMany({ where: { companyId } });
+      // Delete subscription requests
+      await tx.subscriptionRequest.deleteMany({ where: { companyId } });
+      // Delete withdrawals
+      await tx.withdrawal.deleteMany({ where: { companyId } });
+      // Delete payments
+      await tx.payment.deleteMany({ where: { companyId } });
+      await tx.paymentTransaction.deleteMany({ where: { companyId } });
+      // Delete password resets for employees
+      await tx.passwordReset.deleteMany({ where: { companyEmployee: { companyId } } });
+      // Delete employees
+      await tx.companyEmployee.deleteMany({ where: { companyId } });
+      // Finally delete the company
+      await tx.company.delete({ where: { id: companyId } });
     });
 
     res.json({
@@ -2530,9 +2522,6 @@ export const deleteSystemEmployee = async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
 
-    // Prevent deleting the last super admin or self-deletion could be added here
-    // For now just check existence
-
     const admin = await prisma.admin.findUnique({
       where: { id }
     });
@@ -2542,6 +2531,19 @@ export const deleteSystemEmployee = async (req: Request, res: Response) => {
         success: false,
         message: "المدير غير موجود"
       });
+    }
+
+    // Prevent deleting the last super admin
+    if (admin.role === 'SUPER_ADMIN') {
+      const superAdminCount = await prisma.admin.count({
+        where: { role: 'SUPER_ADMIN' }
+      });
+      if (superAdminCount <= 1) {
+        return res.status(400).json({
+          success: false,
+          message: "لا يمكن حذف آخر مدير عام. أضف مدير عام آخر أولاً."
+        });
+      }
     }
 
     await prisma.admin.delete({
@@ -2803,5 +2805,52 @@ export const updateSubscriptionRequestStatus = async (req: Request, res: Respons
       return res.status(error.status).json({ success: false, message: error.message });
     }
     res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+// ========== Settings ==========
+export const getSettings = async (_req: Request, res: Response) => {
+  try {
+    const settings = await prisma.setting.findMany();
+    const settingsMap: Record<string, string> = {};
+    settings.forEach(s => {
+      settingsMap[s.key] = s.value;
+    });
+    res.status(200).json({ success: true, data: settingsMap });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to get settings" });
+  }
+};
+
+export const updateSettings = async (req: Request, res: Response) => {
+  try {
+    const data = req.body;
+    if (!data || typeof data !== 'object') {
+      return res.status(400).json({ success: false, message: "Settings data is required" });
+    }
+
+    // Flatten nested objects into key-value pairs
+    const flatEntries: { key: string; value: string }[] = [];
+    for (const [section, values] of Object.entries(data)) {
+      if (typeof values === 'object' && values !== null) {
+        for (const [field, val] of Object.entries(values as Record<string, any>)) {
+          flatEntries.push({ key: `${section}.${field}`, value: String(val) });
+        }
+      } else {
+        flatEntries.push({ key: section, value: String(values) });
+      }
+    }
+
+    for (const entry of flatEntries) {
+      await prisma.setting.upsert({
+        where: { key: entry.key },
+        update: { value: entry.value },
+        create: { key: entry.key, value: entry.value },
+      });
+    }
+
+    res.status(200).json({ success: true, message: "Settings updated successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update settings" });
   }
 };

@@ -84,4 +84,8 @@ router.get('/withdrawals', adminController.getAllWithdrawals);
 router.post('/withdrawals/:id/approve', adminController.approveWithdrawal);
 router.post('/withdrawals/:id/reject', adminController.rejectWithdrawal);
 
+// Settings Management
+router.get('/settings', adminController.getSettings);
+router.put('/settings', adminController.updateSettings);
+
 export default router;

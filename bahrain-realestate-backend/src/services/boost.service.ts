@@ -274,22 +274,30 @@ export const deactivateExpiredBoosts = async (): Promise<number> => {
  */
 export const cancelBoost = async (boostId: number, companyId?: number): Promise<void> => {
   try {
-    let whereClause = 'id = $1';
-    let params: any[] = [boostId];
-
     if (companyId) {
-      whereClause += ' AND company_id = $2';
-      params.push(companyId);
-    }
+      // Cancel boost only if it belongs to the company
+      const result = await db.$queryRaw`
+        UPDATE boosts
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = ${boostId} AND company_id = ${companyId} AND status = 'active'
+        RETURNING id
+      ` as any[];
 
-    const result = await db.$queryRaw`
-      UPDATE boosts
-      SET status = 'cancelled', updated_at = NOW()
-      WHERE ${whereClause}
-    ` as any[];
+      if (!result || result.length === 0) {
+        throw new AppError('Boost not found or access denied', 404);
+      }
+    } else {
+      // Admin cancel - no company check
+      const result = await db.$queryRaw`
+        UPDATE boosts
+        SET status = 'cancelled', updated_at = NOW()
+        WHERE id = ${boostId} AND status = 'active'
+        RETURNING id
+      ` as any[];
 
-    if (result.length === 0) {
-      throw new AppError('Boost not found or access denied', 404);
+      if (!result || result.length === 0) {
+        throw new AppError('Boost not found', 404);
+      }
     }
   } catch (error) {
     if (error instanceof AppError) {

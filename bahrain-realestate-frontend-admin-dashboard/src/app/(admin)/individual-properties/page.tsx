@@ -1296,8 +1296,8 @@ export default function IndividualPropertiesPage() {
                       <th className="px-3 py-2 text-left rtl:text-right font-medium text-gray-700 dark:text-gray-200">{t('individualProperties.status.active') || 'Status'}</th>
                       <th className="px-3 py-2 text-center font-medium text-gray-700 dark:text-gray-200">
                         {offersProperty.status === 'SOLD' 
-                          ? (offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.status.rented', 'مؤجر') : t('individualProperties.status.sold'))
-                          : (offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.actions.markRented', 'تحديد كمؤجر') : t('individualProperties.actions.markSold'))
+                          ? (offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.status.rented', { defaultValue: 'مؤجر' }) : t('individualProperties.status.sold'))
+                          : (offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.actions.markRented', { defaultValue: 'تحديد كمؤجر' }) : t('individualProperties.actions.markSold'))
                         }
                       </th>
                     </tr>
@@ -1321,7 +1321,7 @@ export default function IndividualPropertiesPage() {
                             {t(`individualProperties.offerStatus.${offer.status.toLowerCase()}` as any, { defaultValue: offer.status })}
                             {isWinner && (
                               <span className="ml-2 rtl:mr-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">
-                                {offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.status.rented', 'مؤجر') : t('individualProperties.status.sold')}
+                                {offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.status.rented', { defaultValue: 'مؤجر' }) : t('individualProperties.status.sold')}
                               </span>
                             )}
                           </td>
@@ -1370,7 +1370,7 @@ export default function IndividualPropertiesPage() {
                     }}
                     className="px-3 py-1.5 rounded-md bg-yellow-500 text-white text-xs disabled:opacity-50"
                   >
-                    {offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.actions.markRented', 'تحديد كمؤجر') : t('individualProperties.actions.markSold')}
+                    {offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.actions.markRented', { defaultValue: 'تحديد كمؤجر' }) : t('individualProperties.actions.markSold')}
                   </button>
                 </div>
               </div>

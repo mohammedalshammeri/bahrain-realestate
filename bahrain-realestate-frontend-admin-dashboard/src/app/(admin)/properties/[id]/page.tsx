@@ -335,11 +335,11 @@ export default function PropertyDetailsPage() {
             {/* Remaining Time prominently at top */}
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">
-                {t('properties.duration.remainingLabel', language === 'ar' ? 'الوقت المتبقي' : 'Remaining time')}
+                {t('properties.duration.remainingLabel', { defaultValue: language === 'ar' ? 'الوقت المتبقي' : 'Remaining time' })}
               </label>
               <span className={property?.isExpired || (property?.expiresAt && getRemainingTime()?.days === 0 && getRemainingTime()?.hours === 0 && getRemainingTime()?.minutes === 0) ? 'text-red-600 font-bold' : 'text-gray-900'}>
                 {(property?.isExpired || (property?.expiresAt && getRemainingTime()?.days === 0 && getRemainingTime()?.hours === 0 && getRemainingTime()?.minutes === 0))
-                  ? t('properties.duration.expired', 'Expired')
+                  ? t('properties.duration.expired', { defaultValue: 'Expired' })
                   : formatRemainingTime(getRemainingTime())}
               </span>
               {(() => { console.log('Details modal remainingTime:', getRemainingTime(), 'expiresAt:', property?.expiresAt); return null; })()}
@@ -360,7 +360,7 @@ export default function PropertyDetailsPage() {
                 {property?.purpose
                   ? t(
                       `properties.purposes.${String(property.purpose).toLowerCase()}`,
-                      String(property.purpose).charAt(0).toUpperCase() + String(property.purpose).slice(1)
+                      { defaultValue: String(property.purpose).charAt(0).toUpperCase() + String(property.purpose).slice(1) }
                     )
                   : 'N/A'}
               </p>
@@ -391,7 +391,7 @@ export default function PropertyDetailsPage() {
                 return (
                   <span className={getStatusBadge(statusKey)}>
                     {displayStatus
-                      ? t(`properties.status.${statusKey}`, displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1))
+                      ? t(`properties.status.${statusKey}`, { defaultValue: displayStatus.charAt(0).toUpperCase() + displayStatus.slice(1) })
                       : 'Unknown'}
                   </span>
                 );
@@ -401,14 +401,14 @@ export default function PropertyDetailsPage() {
             {/* Remaining Time & Expiry */}
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">
-                {t('properties.duration.remainingLabel', language === 'ar' ? 'الوقت المتبقي' : 'Remaining time')}
+                {t('properties.duration.remainingLabel', { defaultValue: language === 'ar' ? 'الوقت المتبقي' : 'Remaining time' })}
               </label>
               <p className={property?.isExpired ? 'text-red-600 font-bold' : 'text-gray-900'}>
-                {property?.isExpired ? t('properties.duration.expired', 'Expired') : formatRemainingTime(property?.remainingTime)}
+                {property?.isExpired ? t('properties.duration.expired', { defaultValue: 'Expired' }) : formatRemainingTime(property?.remainingTime)}
               </p>
               {property?.expiresAt && (
                 <p className="text-xs text-gray-500 mt-1">
-                  {t('properties.duration.expiresAtLabel', language === 'ar' ? 'تاريخ الانتهاء:' : 'Expires at:')}{' '}
+                  {t('properties.duration.expiresAtLabel', { defaultValue: language === 'ar' ? 'تاريخ الانتهاء:' : 'Expires at:' })}{' '}
                   {formatDate(property.expiresAt)}
                 </p>
               )}
@@ -418,13 +418,13 @@ export default function PropertyDetailsPage() {
         <h3 className="text-base font-semibold mb-2">
           {t(
             'properties.duration.setDurationTitle',
-            language === 'ar' ? 'تحديد مدة أو تاريخ انتهاء للعقار' : 'Set duration or expiry date for property'
+            { defaultValue: language === 'ar' ? 'تحديد مدة أو تاريخ انتهاء للعقار' : 'Set duration or expiry date for property' }
           )}
         </h3>
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-1">
-              {t('properties.duration.daysLabel', language === 'ar' ? 'عدد الأيام' : 'Number of days')}
+              {t('properties.duration.daysLabel', { defaultValue: language === 'ar' ? 'عدد الأيام' : 'Number of days' })}
             </label>
             <input
               type="number"
@@ -437,7 +437,7 @@ export default function PropertyDetailsPage() {
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-500 mb-1">
-              {t('properties.duration.expiresAtField', language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry date')}
+              {t('properties.duration.expiresAtField', { defaultValue: language === 'ar' ? 'تاريخ الانتهاء' : 'Expiry date' })}
             </label>
             <input
               type="datetime-local"
@@ -463,9 +463,9 @@ export default function PropertyDetailsPage() {
         <p className="text-xs text-gray-500 mt-2">
           {t(
             'properties.duration.helperText',
-            language === 'ar'
+            { defaultValue: language === 'ar'
               ? 'يمكنك تحديد عدد الأيام أو تاريخ الانتهاء مباشرة. عند انتهاء المدة سيتم تعليق العقار تلقائيًا.'
-              : 'You can either set the number of days or a specific expiry date. When the duration ends, the property will automatically be put on hold.'
+              : 'You can either set the number of days or a specific expiry date. When the duration ends, the property will automatically be put on hold.' }
           )}
         </p>
       </div>

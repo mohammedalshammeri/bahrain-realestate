@@ -1,8 +1,9 @@
 import { db } from '../config/database';
 import { AppError } from '../middleware/errorHandler';
+import axios from 'axios';
 
-// Firebase Admin SDK would be imported here
-// import * as admin from 'firebase-admin';
+// Expo Push API endpoint
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 
 export interface PushTokenData {
   deviceToken: string;
@@ -91,28 +92,21 @@ export const getActivePushTokens = async (
   companyId?: number
 ): Promise<string[]> => {
   try {
-    let whereClause = 'is_active = true';
-    const params: any[] = [];
+    let tokensResult: any[] = [];
 
     if (userType === 'company' && companyId) {
-      whereClause += ' AND user_type = $1 AND company_id = $2';
-      params.push('company', companyId);
-    } else if (userType === 'employee' && userId) {
-      whereClause += ' AND user_type = $1 AND user_id = $2';
-      params.push('employee', userId);
-    } else if (userType === 'admin' && userId) {
-      whereClause += ' AND user_type = $1 AND user_id = $2';
-      params.push('admin', userId);
+      tokensResult = await db.$queryRaw`
+        SELECT device_token FROM push_tokens WHERE is_active = true AND company_id = ${companyId}
+      ` as any[];
     } else if (userType === 'individual' && userId) {
-      whereClause += ' AND user_type = $1 AND user_id = $2';
-      params.push('individual', userId);
-    } else {
-      return [];
+      tokensResult = await db.$queryRaw`
+        SELECT device_token FROM push_tokens WHERE is_active = true AND user_id = ${userId}
+      ` as any[];
+    } else if (userId) {
+      tokensResult = await db.$queryRaw`
+        SELECT device_token FROM push_tokens WHERE is_active = true AND user_id = ${userId}
+      ` as any[];
     }
-
-    const tokensResult = await db.$queryRaw`
-      SELECT device_token FROM push_tokens WHERE ${whereClause}
-    ` as any[];
 
     return tokensResult.map((row: any) => row.device_token);
   } catch (error) {
@@ -150,8 +144,8 @@ export const sendPushNotification = async (notificationData: PushNotificationDat
 
     const notification = insertResult[0];
 
-    // Send notifications via Firebase/APNs
-    const results = await sendToFirebase(targetTokens, {
+    // Send notifications via Expo Push API
+    const results = await sendToExpoPush(targetTokens, {
       title: notificationData.title,
       body: notificationData.body,
       data: notificationData.data,
@@ -189,53 +183,74 @@ export const sendPushNotification = async (notificationData: PushNotificationDat
 };
 
 /**
- * Send notifications via Firebase Cloud Messaging
+ * Send notifications via Expo Push API
  */
-const sendToFirebase = async (
+const sendToExpoPush = async (
   tokens: string[],
   payload: { title: string; body: string; data?: Record<string, any> }
 ): Promise<Array<{ success: boolean; error?: string }>> => {
   try {
-    // In a real implementation, this would use Firebase Admin SDK
-    // For now, we'll simulate the Firebase API calls
+    // Filter to only Expo push tokens (ExponentPushToken[...])
+    const expoPushTokens = tokens.filter(t => t.startsWith('ExponentPushToken[') || t.startsWith('ExpoPushToken['));
 
+    if (expoPushTokens.length === 0) {
+      return tokens.map(() => ({ success: false, error: 'No valid Expo push tokens' }));
+    }
+
+    // Build messages for Expo Push API
+    const messages = expoPushTokens.map(token => ({
+      to: token,
+      sound: 'default',
+      title: payload.title,
+      body: payload.body,
+      data: payload.data || {},
+    }));
+
+    // Send in batches of 100 (Expo limit)
     const results: Array<{ success: boolean; error?: string }> = [];
+    const BATCH_SIZE = 100;
 
-    for (const token of tokens) {
+    for (let i = 0; i < messages.length; i += BATCH_SIZE) {
+      const batch = messages.slice(i, i + BATCH_SIZE);
+
       try {
-        // Simulate Firebase API call
-        // const message = {
-        //   token,
-        //   notification: {
-        //     title: payload.title,
-        //     body: payload.body,
-        //   },
-        //   data: payload.data,
-        // };
+        const response = await axios.post(EXPO_PUSH_URL, batch, {
+          headers: {
+            'Accept': 'application/json',
+            'Accept-Encoding': 'gzip, deflate',
+            'Content-Type': 'application/json',
+          },
+          timeout: 15000,
+        });
 
-        // await admin.messaging().send(message);
-
-        // Simulate success/failure randomly for demo
-        const success = Math.random() > 0.1; // 90% success rate
-
-        results.push({ success });
-
-        if (!success) {
-          // Clean up invalid tokens
-          await db.$queryRaw`
-            UPDATE push_tokens
-            SET is_active = false, updated_at = NOW()
-            WHERE device_token = ${token}
-          `;
+        const tickets = response.data?.data || [];
+        for (let j = 0; j < tickets.length; j++) {
+          const ticket = tickets[j];
+          if (ticket.status === 'ok') {
+            results.push({ success: true });
+          } else {
+            results.push({ success: false, error: ticket.message || 'Push failed' });
+            // Deactivate invalid tokens
+            if (ticket.details?.error === 'DeviceNotRegistered') {
+              await db.$queryRaw`
+                UPDATE push_tokens SET is_active = false, updated_at = NOW()
+                WHERE device_token = ${expoPushTokens[i + j]}
+              `;
+            }
+          }
         }
-      } catch (error) {
-        results.push({ success: false, error: 'Firebase API error' });
+      } catch (batchError) {
+        // Mark all tokens in this batch as failed
+        for (let j = 0; j < batch.length; j++) {
+          results.push({ success: false, error: 'Expo Push API error' });
+        }
+        console.error('[PUSH] Expo Push API batch error:', batchError);
       }
     }
 
     return results;
   } catch (error) {
-    throw new AppError('Firebase messaging error', 500);
+    throw new AppError('Expo Push API error', 500);
   }
 };
 
@@ -346,28 +361,25 @@ export const getPushNotificationHistory = async (
   limit: number = 20
 ): Promise<PushNotificationWithDetails[]> => {
   try {
-    let whereClause = '';
-    const params: any[] = [];
+    let notificationsResult: any[] = [];
 
     if (userType === 'company' && companyId) {
-      whereClause = 'user_type = $1 AND company_id = $2';
-      params.push('company', companyId);
-    } else if (userType === 'employee' && userId) {
-      whereClause = 'user_type = $1 AND user_id = $2';
-      params.push('employee', userId);
-    } else if (userType === 'admin' && userId) {
-      whereClause = 'user_type = $1 AND user_id = $2';
-      params.push('admin', userId);
+      notificationsResult = await db.$queryRaw`
+        SELECT * FROM push_notifications
+        WHERE company_id = ${companyId}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${skip}
+      ` as any[];
+    } else if (userId) {
+      notificationsResult = await db.$queryRaw`
+        SELECT * FROM push_notifications
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${skip}
+      ` as any[];
     } else {
       return [];
     }
-
-    const notificationsResult = await db.$queryRaw`
-      SELECT * FROM push_notifications
-      WHERE ${whereClause}
-      ORDER BY created_at DESC
-      LIMIT ${limit} OFFSET ${skip}
-    ` as any[];
 
     return notificationsResult.map((row: any) => ({
       id: row.id,
