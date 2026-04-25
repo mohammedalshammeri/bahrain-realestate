@@ -1,6 +1,7 @@
 
 'use client';
 
+import Image from 'next/image';
 // Helper: حساب الوقت المتبقي من expiresAt
 const getRemainingTimeFromExpiresAt = (expiresAt?: string) => {
   if (!expiresAt) return undefined;
@@ -16,8 +17,8 @@ const getRemainingTimeFromExpiresAt = (expiresAt?: string) => {
   return { days, hours, minutes };
 };
 
-import { useState, useEffect, useRef } from 'react';
-import { getProperties, updatePropertyStatus, deleteProperty, getPropertyById, updatePropertyFeatured, updatePropertyExpiry, updatePropertyDetails, Property, ApiError, getApprovedCompanies } from '@/lib/api/adminApi';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { getProperties, updatePropertyStatus, deleteProperty, getPropertyById, updatePropertyFeatured, updatePropertyExpiry, updatePropertyDetails, Property, ApiError, getApprovedCompanies, Company } from '@/lib/api/adminApi';
 import CountdownTimer from '@/components/ui/CountdownTimer';
 // ...existing code...
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -26,6 +27,68 @@ const governorates = ['All', 'Capital Governorate', 'Muharraq Governorate', 'Nor
 const purposes = ['All', 'Sale', 'Rent'];
 const statuses = ['All', 'Active', 'Pending', 'Rejected', 'Sold', 'Rented'];
 const propertyTypes = ['All', 'apartments', 'villas_houses', 'lands', 'buildings', 'offices', 'studio', 'shops', 'warehouses', 'labor_accommodation', 'commercial_complexes', 'chalets', 'traditional_houses', 'farms', 'halls', 'under_construction', 'camps', 'misc'];
+
+type PropertyFilters = {
+  governorate?: string;
+  purpose?: string;
+  status?: string;
+  type?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  company?: string;
+};
+
+interface PropertyPaginationData {
+  currentPage?: number;
+  totalPages?: number;
+  totalCount?: number;
+  limit?: number;
+}
+
+interface PropertiesResponse {
+  success: boolean;
+  data?: {
+    properties?: Property[];
+    pagination?: PropertyPaginationData;
+  };
+}
+
+interface PropertyDetailsResponse {
+  success: boolean;
+  data?: Property;
+}
+
+interface ApprovedCompaniesResponse {
+  data?: Company[] | { companies?: Company[]; data?: Company[] };
+}
+
+function extractCompanies(response: ApprovedCompaniesResponse): Company[] {
+  if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  if (response.data && Array.isArray(response.data.companies)) {
+    return response.data.companies;
+  }
+
+  if (response.data && Array.isArray(response.data.data)) {
+    return response.data.data;
+  }
+
+  return [];
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function PropertiesPage() {
   // State for duration/expiry controls per property (MUST be inside component)
@@ -115,18 +178,6 @@ export default function PropertiesPage() {
     return translated !== key ? translated : area;
   };
 
-  const getCurrentFilters = () => {
-    const filters: any = {};
-    if (selectedGovernorate !== 'All') filters.governorate = selectedGovernorate;
-    if (selectedPurpose !== 'All') filters.purpose = selectedPurpose;
-    if (selectedStatus !== 'All') filters.status = selectedStatus;
-    if (selectedType !== 'All') filters.type = selectedType;
-    if (dateFrom) filters.dateFrom = dateFrom;
-    if (dateTo) filters.dateTo = dateTo;
-    if (selectedCompany !== 'All') filters.company = selectedCompany;
-    return filters;
-  };
-
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedGovernorate, setSelectedGovernorate] = useState('All');
   const [selectedPurpose, setSelectedPurpose] = useState('All');
@@ -135,10 +186,8 @@ export default function PropertiesPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [selectedCompany, setSelectedCompany] = useState('All');
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedProperties, setSelectedProperties] = useState<number[]>([]);
-  const [editingDurations, setEditingDurations] = useState<Record<number, string>>({});
-  const [savingDurationIds, setSavingDurationIds] = useState<number[]>([]);
   
   // Duration Modal State
   const [showDurationModal, setShowDurationModal] = useState(false);
@@ -162,6 +211,18 @@ export default function PropertiesPage() {
     limit: 20
   });
 
+  const getCurrentFilters = useCallback((): PropertyFilters => {
+    const filters: PropertyFilters = {};
+    if (selectedGovernorate !== 'All') filters.governorate = selectedGovernorate;
+    if (selectedPurpose !== 'All') filters.purpose = selectedPurpose;
+    if (selectedStatus !== 'All') filters.status = selectedStatus;
+    if (selectedType !== 'All') filters.type = selectedType;
+    if (dateFrom) filters.dateFrom = dateFrom;
+    if (dateTo) filters.dateTo = dateTo;
+    if (selectedCompany !== 'All') filters.company = selectedCompany;
+    return filters;
+  }, [dateFrom, dateTo, selectedCompany, selectedGovernorate, selectedPurpose, selectedStatus, selectedType]);
+
   // ضبط نقطة البداية للـ scroll الأفقي فقط (بدون لمس العمودي نهائياً)
   // العربية: نبدأ من اليمين
   // الإنجليزية: نبدأ من اليسار
@@ -183,14 +244,9 @@ export default function PropertiesPage() {
   useEffect(() => {
     const loadCompanies = async () => {
       try {
-        const resp: any = await getApprovedCompanies(undefined, 1, 200);
-        const list = resp?.data?.companies ?? resp?.data ?? resp?.data?.data ?? [];
-        if (Array.isArray(list)) {
-          setCompanies(list);
-        } else {
-          setCompanies([]);
-        }
-      } catch (e) {
+        const resp = await getApprovedCompanies(undefined, 1, 200) as ApprovedCompaniesResponse;
+        setCompanies(extractCompanies(resp));
+      } catch {
         setCompanies([]);
       }
     };
@@ -213,29 +269,21 @@ export default function PropertiesPage() {
       }
       await updatePropertyExpiry(selectedPropertyForDuration.id, durationData.days, durationData.hours, durationData.minutes);
       setShowDurationModal(false);
-      fetchProperties(currentPage, getCurrentFilters());
-    } catch (err) {
+      void fetchProperties(currentPage, getCurrentFilters());
+    } catch {
       alert('Failed to update duration');
     }
   };
 
-  const fetchProperties = async (
+  const fetchProperties = useCallback(async (
     page: number = 1,
-    filters: {
-      governorate?: string;
-      purpose?: string;
-      status?: string;
-      type?: string;
-      dateFrom?: string;
-      dateTo?: string;
-      company?: string;
-    } = {},
+    filters: PropertyFilters = {},
     limit: number = pagination.limit
   ) => {
     try {
       setIsLoading(true);
       setError(null);
-      const params: Record<string, any> = {
+      const params: Record<string, string> = {
         page: page.toString(),
         limit: limit.toString(),
         sort: sortOrder
@@ -247,10 +295,10 @@ export default function PropertiesPage() {
       if (filters.dateFrom) params.dateFrom = filters.dateFrom;
       if (filters.dateTo) params.dateTo = filters.dateTo;
       if (filters.company) params.company = filters.company;
-      const response = await getProperties(params) as any;
+      const response = await getProperties(params) as PropertiesResponse;
       
       if (response.success && response.data && Array.isArray(response.data.properties)) {
-        const list = response.data.properties as Property[];
+        const list = response.data.properties;
         setProperties(list);
 
         // زِد رقم نسخة البيانات بحيث يُعاد ضبط السكول الأفقي بعد كل تحميل جديد
@@ -291,24 +339,20 @@ export default function PropertiesPage() {
         setProperties([]);
       }
       setCurrentPage(page);
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Failed to load properties');
-      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load properties'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.limit, previewProperty, sortOrder]);
 
   const handleRefresh = () => {
-    fetchProperties(currentPage, getCurrentFilters());
+    void fetchProperties(currentPage, getCurrentFilters());
   };
 
   useEffect(() => {
-    fetchProperties(1, getCurrentFilters());
-  }, [sortOrder]);
+    void fetchProperties(1, getCurrentFilters());
+  }, [fetchProperties, getCurrentFilters]);
 
   // Load full governorates/areas map once for rich area dropdowns
   useEffect(() => {
@@ -352,7 +396,7 @@ export default function PropertiesPage() {
           setGovernorateAreas(areaMap);
           setGovernorateNameToId(nameToId);
         }
-      } catch (e) {
+      } catch {
         // في حال فشل تحميل القائمة الكاملة، نستمر باستخدام القائمة المبنية من العقارات فقط
       }
     };
@@ -373,7 +417,7 @@ export default function PropertiesPage() {
 
   // Handle filter changes
   const handleFilterChange = (filterType: string, value: string) => {
-    let newFilters: any = {};
+    const newFilters: PropertyFilters = {};
     
     switch (filterType) {
       case 'governorate':
@@ -429,7 +473,7 @@ export default function PropertiesPage() {
       newFilters.dateTo = dateTo;
     }
     
-    fetchProperties(1, newFilters);
+    void fetchProperties(1, newFilters);
   };
 
   const handleApprove = async (id: number) => {
@@ -438,8 +482,8 @@ export default function PropertiesPage() {
         // عند الموافقة من الجدول: فعل العقار لمدة شهر افتراضيًا
         await updatePropertyStatus(id, 'active', 30);
         fetchProperties(currentPage, getCurrentFilters());
-      } catch (err: any) {
-        alert(err.message || 'Failed to approve property');
+      } catch (err: unknown) {
+        alert(getErrorMessage(err, 'Failed to approve property'));
       }
     });
   };
@@ -449,8 +493,8 @@ export default function PropertiesPage() {
       try {
         await updatePropertyStatus(id, 'rejected');
         fetchProperties(currentPage, getCurrentFilters());
-      } catch (err: any) {
-        alert(err.message || 'Failed to reject property');
+      } catch (err: unknown) {
+        alert(getErrorMessage(err, 'Failed to reject property'));
       }
     });
   };
@@ -460,30 +504,13 @@ export default function PropertiesPage() {
       try {
         await deleteProperty(id);
         fetchProperties(currentPage, getCurrentFilters());
-      } catch (err: any) {
-        alert(err.message || 'Failed to delete property');
+      } catch (err: unknown) {
+        alert(getErrorMessage(err, 'Failed to delete property'));
       }
     });
   };
 
   // Bulk actions
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      // Only select properties with positive IDs (real properties, not individual offers)
-      setSelectedProperties(properties.filter(p => p.id > 0).map(p => p.id));
-    } else {
-      setSelectedProperties([]);
-    }
-  };
-
-  const handleSelectProperty = (id: number, checked: boolean) => {
-    if (checked) {
-      setSelectedProperties([...selectedProperties, id]);
-    } else {
-      setSelectedProperties(selectedProperties.filter(pId => pId !== id));
-    }
-  };
-
   const handleBulkApprove = async () => {
     if (selectedProperties.length === 0) return;
     if (!confirm(t('properties.messages.confirmBulkApprove').replace('{count}', selectedProperties.length.toString()))) return;
@@ -497,8 +524,8 @@ export default function PropertiesPage() {
       setSelectedProperties([]);
       fetchProperties(currentPage, getCurrentFilters());
       alert(t('properties.messages.approveSuccess'));
-    } catch (err: any) {
-      alert(err.message || t('properties.messages.approveFail'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('properties.messages.approveFail')));
     } finally {
       setBulkActionLoading(false);
     }
@@ -516,8 +543,8 @@ export default function PropertiesPage() {
       setSelectedProperties([]);
       fetchProperties(currentPage, getCurrentFilters());
       alert(t('properties.messages.rejectSuccess'));
-    } catch (err: any) {
-      alert(err.message || t('properties.messages.rejectFail'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('properties.messages.rejectFail')));
     } finally {
       setBulkActionLoading(false);
     }
@@ -535,8 +562,8 @@ export default function PropertiesPage() {
       setSelectedProperties([]);
       fetchProperties(currentPage, getCurrentFilters());
       alert(t('properties.messages.bulkDeleteSuccess'));
-    } catch (err: any) {
-      alert(err.message || t('properties.messages.bulkDeleteFail'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('properties.messages.bulkDeleteFail')));
     } finally {
       setBulkActionLoading(false);
     }
@@ -546,8 +573,8 @@ export default function PropertiesPage() {
     try {
       await updatePropertyFeatured(id, !currentStatus, undefined);
       fetchProperties(currentPage, getCurrentFilters());
-    } catch (err: any) {
-      alert(err.message || t('properties.messages.featureFail'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('properties.messages.featureFail')));
     }
   };
 
@@ -555,8 +582,8 @@ export default function PropertiesPage() {
     try {
       await updatePropertyFeatured(id, undefined, !currentStatus);
       fetchProperties(currentPage, getCurrentFilters());
-    } catch (err: any) {
-      alert(err.message || t('properties.messages.featureFail'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('properties.messages.featureFail')));
     }
   };
 
@@ -566,7 +593,7 @@ export default function PropertiesPage() {
     setShowEditModal(true);
   };
 
-  const handleSaveProperty = async (updatedProperty: any) => {
+  const handleSaveProperty = async (updatedProperty: Property) => {
     try {
       if (!updatedProperty || !updatedProperty.id) return;
 
@@ -577,18 +604,18 @@ export default function PropertiesPage() {
         type: updatedProperty.type,
         governorate: updatedProperty.governorate,
         area: updatedProperty.area,
-        bedrooms: updatedProperty.bedrooms ?? null,
-        bathrooms: updatedProperty.bathrooms ?? null,
+        bedrooms: updatedProperty.bedrooms ?? undefined,
+        bathrooms: updatedProperty.bathrooms ?? undefined,
         description: updatedProperty.description,
       };
 
       await updatePropertyDetails(updatedProperty.id, payload);
       setShowEditModal(false);
       setEditingProperty(null);
-      fetchProperties(currentPage, getCurrentFilters());
+      void fetchProperties(currentPage, getCurrentFilters());
       alert(t('properties.messages.updateSuccess'));
-    } catch (err: any) {
-      alert(err.message || t('properties.messages.updateFail'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('properties.messages.updateFail')));
     }
   };
 
@@ -602,8 +629,8 @@ export default function PropertiesPage() {
         setEditingProperty(null);
         fetchProperties(currentPage, getCurrentFilters());
         alert('تم تفعيل العقار بنجاح');
-      } catch (err: any) {
-        alert(err.message || 'فشل تفعيل العقار');
+      } catch (err: unknown) {
+        alert(getErrorMessage(err, 'فشل تفعيل العقار'));
       }
     });
   };
@@ -671,9 +698,9 @@ export default function PropertiesPage() {
 
     if (property.id > 0) {
       try {
-        const res: any = await getPropertyById(property.id);
+        const res = await getPropertyById(property.id) as PropertyDetailsResponse;
         if (res?.success && res?.data) {
-          setPreviewProperty(res.data as Property);
+          setPreviewProperty(res.data);
         }
       } catch {
         // keep existing preview data
@@ -955,7 +982,7 @@ export default function PropertiesPage() {
                 {Array.isArray(properties)
                   ? properties.filter((p) => {
                       const status = String(p.status || '').toLowerCase();
-                      const isExpired = (p as any).isExpired;
+                      const isExpired = Boolean(p.isExpired);
                       // Available = ACTIVE and not expired
                       return status === 'active' && !isExpired;
                     }).length
@@ -978,8 +1005,6 @@ export default function PropertiesPage() {
           </div>
         </div>
       )}
-
-      {/* global duration setting removed per request */}
 
       {/* Properties Table */}
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm">
@@ -1065,7 +1090,7 @@ export default function PropertiesPage() {
                     ))}
                   </tr>
                 ))
-              ) : (Array.isArray(properties) ? properties.map((property, index) => (
+              ) : (Array.isArray(properties) ? properties.map((property) => (
                 <tr key={property.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 last:border-0">
                   <td className="px-4 py-4 whitespace-nowrap">
                     {property.id > 0 && (
@@ -1089,17 +1114,20 @@ export default function PropertiesPage() {
                         <button
                           type="button"
                           onClick={() => openPreview(property)}
-                          className="h-10 w-10 rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700"
+                          className="relative h-10 w-10 rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-gray-700"
                           title={t('common.preview')}
                         >
-                          <img
+                          <Image
                             src={getImageUrl(getPropertyThumbnail(property)!)}
                             alt={property.title}
+                            fill
+                            unoptimized
+                            sizes="40px"
                             className="h-full w-full object-cover"
                             onError={(e) => {
                               // Fallback if image fails to load
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              (e.target as HTMLImageElement).parentElement?.nextElementSibling?.classList.remove('hidden');
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement?.nextElementSibling?.classList.remove('hidden');
                             }}
                           />
                         </button>
@@ -1716,11 +1744,14 @@ export default function PropertiesPage() {
                   {(() => {
                     const activePreviewImage = newImages[previewImageIndex];
                     return (
-                      <div className="aspect-[4/3] w-full rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                      <div className="relative aspect-[4/3] w-full rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
                         {activePreviewImage ? (
-                          <img
+                          <Image
                             src={getImageUrl(activePreviewImage)}
                             alt={previewProperty.title}
+                            fill
+                            unoptimized
+                            sizes="(min-width: 768px) 50vw, 100vw"
                             className="w-full h-full object-contain"
                           />
                         ) : (
@@ -1741,12 +1772,15 @@ export default function PropertiesPage() {
                           key={`${previewProperty.id}-img-${idx}`}  
                           type="button"
                           onClick={() => setPreviewImageIndex(idx)}
-                          className={`h-14 w-14 rounded-md overflow-hidden border ${idx === previewImageIndex ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'} flex-shrink-0`}
+                          className={`relative h-14 w-14 rounded-md overflow-hidden border ${idx === previewImageIndex ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'} flex-shrink-0`}
                           aria-label={`Image ${idx + 1}`}
                         >
-                          <img
+                          <Image
                             src={getImageUrl(img)}
                             alt=""
+                            fill
+                            unoptimized
+                            sizes="56px"
                             className="h-full w-full object-contain bg-gray-100 dark:bg-gray-800"
                           />
                         </button>
@@ -1844,7 +1878,7 @@ export default function PropertiesPage() {
                           const normalizedStatus = String(originalStatus || '').toLowerCase();
 
                           // اعتبر العقار المنتهي (active + expired) كأنه "pending" في الواجهة
-                          let isExpired = Boolean((previewProperty as any).isExpired);
+                          let isExpired = Boolean(previewProperty.isExpired);
                           if (!isExpired && previewProperty.expiresAt) {
                             const ts = new Date(previewProperty.expiresAt).getTime();
                             if (!Number.isNaN(ts)) {

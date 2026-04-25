@@ -27,7 +27,7 @@ export default function LoginPage() {
         // Always show an Arabic message on failure, regardless of backend text
         setError('بيانات تسجيل الدخول غير صحيحة، يرجى التحقق من اسم المستخدم وكلمة المرور');
       }
-    } catch (error: any) {
+    } catch {
       // Generic Arabic error message if request itself fails
       setError('حدث خطأ أثناء الاتصال بالخادم، يرجى المحاولة مرة أخرى');
     } finally {

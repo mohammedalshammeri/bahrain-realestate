@@ -1,9 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getCompanies, updateCompanyStatus, Company, ApiError } from '@/lib/api/adminApi';
 import { useToast } from '@/components/ui/Toast';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+interface CompaniesResponseData {
+  companies?: Company[];
+  pagination?: {
+    currentPage?: number;
+    totalPages?: number;
+    totalCount?: number;
+    limit?: number;
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function CompaniesPage() {
   const { t, language } = useLanguage();
@@ -20,37 +42,34 @@ export default function CompaniesPage() {
   });
   const { showToast, ToastContainer } = useToast();
 
-  const fetchCompanies = async (page: number = 1, search?: string, status?: string) => {
+  const fetchCompanies = useCallback(async (page: number = 1, search?: string, status?: string) => {
     try {
       setIsLoading(true);
       setError(null);
       const response = await getCompanies(search, page, 10, status);
+      const data = response.data as CompaniesResponseData | undefined;
       
-      if (response.success && response.data && Array.isArray(response.data.companies)) {
-        setCompanies(response.data.companies);
+      if (response.success && data && Array.isArray(data.companies)) {
+        setCompanies(data.companies);
         
-        if (response.data.pagination) {
+        if (data.pagination) {
           setPagination({
-            page: response.data.pagination.currentPage || 1,
-            totalPages: response.data.pagination.totalPages || 1,
-            total: response.data.pagination.totalCount || 0,
-            limit: response.data.pagination.limit || 10
+            page: data.pagination.currentPage || 1,
+            totalPages: data.pagination.totalPages || 1,
+            total: data.pagination.totalCount || 0,
+            limit: data.pagination.limit || 10
           });
         }
       } else {
         setCompanies([]);
       }
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError(t('companies.failedLoad'));
-      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, t('companies.failedLoad')));
       setCompanies([]);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
   const handleStatusUpdate = async (companyId: number, newStatus: string, reason?: string) => {
     try {
@@ -59,8 +78,8 @@ export default function CompaniesPage() {
         message: t('companies.statusUpdated'),
         type: 'success'
       });
-      fetchCompanies(pagination.page, searchTerm, statusFilter);
-    } catch (error) {
+      await fetchCompanies(pagination.page, searchTerm, statusFilter);
+    } catch {
       showToast({
         message: t('companies.failedUpdate'),
         type: 'error'
@@ -75,7 +94,7 @@ export default function CompaniesPage() {
         message: t('companies.refreshed'),
         type: 'success'
       });
-    } catch (error) {
+    } catch {
       showToast({
         message: t('companies.failedRefresh'),
         type: 'error'
@@ -88,8 +107,8 @@ export default function CompaniesPage() {
   };
 
   useEffect(() => {
-    fetchCompanies();
-  }, []);
+    void fetchCompanies();
+  }, [fetchCompanies]);
 
   const handleSearch = async (term: string) => {
     setSearchTerm(term);
@@ -129,27 +148,11 @@ export default function CompaniesPage() {
         message: t('companies.exportSuccess'),
         type: 'success'
       });
-    } catch (error) {
+    } catch {
       showToast({
         message: t('companies.exportFail'),
         type: 'error'
       });
-    }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const baseClasses = "px-2 py-1 text-sm font-medium rounded-full";
-    switch (status) {
-      case 'approved':
-        return `${baseClasses} bg-green-100 text-green-800`;
-      case 'rejected':
-        return `${baseClasses} bg-red-100 text-red-800`;
-      case 'pending':
-        return `${baseClasses} bg-yellow-100 text-yellow-800`;
-      case 'blocked':
-        return `${baseClasses} bg-gray-100 text-gray-800`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800`;
     }
   };
 
@@ -286,7 +289,7 @@ export default function CompaniesPage() {
                   </tr>
                 ))
               ) : Array.isArray(companies) && companies.length > 0 ? (
-                companies.map((company, index) => (
+                companies.map((company) => (
                 <tr key={company.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center">

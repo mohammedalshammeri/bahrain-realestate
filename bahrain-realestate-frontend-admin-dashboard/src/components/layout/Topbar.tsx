@@ -22,6 +22,17 @@ interface Notification {
   time: string;
 }
 
+interface TopbarDashboardStats {
+  statistics: {
+    companies: {
+      pending: number;
+    };
+    complaints: {
+      open: number;
+    };
+  };
+}
+
 export default function Topbar({ title, onMenuClickAction }: TopbarProps) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -46,7 +57,7 @@ export default function Topbar({ title, onMenuClickAction }: TopbarProps) {
       try {
         const response = await getDashboardStats();
         if (response.success && response.data) {
-          const stats = response.data.statistics;
+          const stats = (response.data as TopbarDashboardStats).statistics;
           const newNotifications: Notification[] = [];
 
           if (stats.companies.pending > 0) {

@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { updateSettings, getSettings, ApiError } from '@/lib/api/adminApi';
+import { getSettings } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+type SettingsMap = Record<string, string | undefined>;
 
 export default function SettingsPage() {
   const { t } = useLanguage();
@@ -21,7 +23,6 @@ export default function SettingsPage() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
 
   // Fetch current settings on mount
   useEffect(() => {
@@ -29,7 +30,7 @@ export default function SettingsPage() {
       try {
         const response = await getSettings();
         if (response?.data) {
-          const data = response.data;
+          const data = response.data as SettingsMap;
           setGeneralSettings({
             websiteName: data['general.siteName'] || 'Bahrain Property Hub',
             supportEmail: data['general.contactEmail'] || '',
@@ -43,8 +44,6 @@ export default function SettingsPage() {
         }
       } catch (error) {
         console.error('Failed to load settings:', error);
-      } finally {
-        setIsLoadingSettings(false);
       }
     };
     loadSettings();

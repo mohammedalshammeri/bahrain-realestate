@@ -1,8 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getCompanyEmployees, getCompanyById, Employee, Company, ApiError } from '@/lib/api/adminApi';
+
+interface CompanyEmployeesResponseData {
+  company?: Company;
+  employees?: Employee[];
+}
 
 export default function CompanyEmployeesPage() {
   const params = useParams();
@@ -15,7 +20,19 @@ export default function CompanyEmployeesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const fetchData = async () => {
+  const getErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (error instanceof ApiError) {
+      return error.message;
+    }
+
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
+  }, []);
+
+  const fetchData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -25,25 +42,24 @@ export default function CompanyEmployeesPage() {
         getCompanyById(parseInt(companyId)),
         getCompanyEmployees(parseInt(companyId))
       ]);
-      
-      setCompany(companyResponse.data);
-      setEmployees(employeesResponse.data);
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Failed to load company employees');
-      }
+
+      const companyData = companyResponse.data as CompanyEmployeesResponseData['company'];
+      const employeesData = employeesResponse.data as CompanyEmployeesResponseData['employees'];
+
+      setCompany(companyData || null);
+      setEmployees(employeesData || []);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load company employees'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId, getErrorMessage]);
 
   useEffect(() => {
     if (companyId) {
-      fetchData();
+      void fetchData();
     }
-  }, [companyId]);
+  }, [companyId, fetchData]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

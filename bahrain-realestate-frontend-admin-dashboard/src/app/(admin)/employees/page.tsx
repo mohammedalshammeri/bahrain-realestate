@@ -1,17 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getEmployees, updateEmployeeStatus, Employee, ApiError } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+interface EmployeesResponseData {
+  employees: Employee[];
+  pagination?: {
+    page?: number;
+    totalPages?: number;
+    total?: number;
+    limit?: number;
+  };
+}
+
 export default function EmployeesPage() {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
   const [pagination, setPagination] = useState({
     page: 1,
     totalPages: 1,
@@ -19,12 +28,14 @@ export default function EmployeesPage() {
     limit: 10
   });
 
-  const fetchEmployees = async (page: number = 1, searchTerm: string = '', role: string = '', status: string = '') => {
+  const fetchEmployees = useCallback(async (page: number = 1, searchTerm: string = '', role: string = '') => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getEmployees(searchTerm, role, page) as any;
-      // Note: The API call needs to be updated to support status filtering if not already
+      const response = await getEmployees(searchTerm, role, page) as {
+        success: boolean;
+        data?: EmployeesResponseData;
+      };
       
       if (response.success && response.data && Array.isArray(response.data.employees)) {
         setEmployees(response.data.employees);
@@ -49,37 +60,28 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
-    fetchEmployees();
-  }, []);
+    void fetchEmployees();
+  }, [fetchEmployees]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchEmployees(1, search, roleFilter, statusFilter);
+      void fetchEmployees(1, search, roleFilter);
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [search, roleFilter, statusFilter]);
+  }, [fetchEmployees, search, roleFilter]);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     if (!confirm(t('companyEmployees.messages.confirmStatusChange', { status: newStatus }))) return;
     
     try {
       await updateEmployeeStatus(id, newStatus);
-      fetchEmployees(pagination.page, search, roleFilter, statusFilter);
-    } catch (err) {
+      void fetchEmployees(pagination.page, search, roleFilter);
+    } catch {
       alert(t('companyEmployees.messages.updateFail'));
     }
-  };
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString(language === 'ar' ? 'ar-BH' : 'en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
   };
 
   return (
@@ -228,7 +230,7 @@ export default function EmployeesPage() {
         <div className="flex justify-center pt-4">
           <nav className="flex items-center gap-1">
             <button
-              onClick={() => fetchEmployees(pagination.page - 1, search, roleFilter, statusFilter)}
+              onClick={() => void fetchEmployees(pagination.page - 1, search, roleFilter)}
               disabled={pagination.page === 1}
               className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >
@@ -240,7 +242,7 @@ export default function EmployeesPage() {
              {t('common.pageOf', { current: pagination.page, total: pagination.totalPages })}
             </span>
             <button
-              onClick={() => fetchEmployees(pagination.page + 1, search, roleFilter, statusFilter)}
+              onClick={() => void fetchEmployees(pagination.page + 1, search, roleFilter)}
               disabled={pagination.page === pagination.totalPages}
               className="p-2 border border-gray-200 dark:border-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
             >

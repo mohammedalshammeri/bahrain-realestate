@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -12,13 +12,13 @@ interface SystemEmployee {
   createdAt: string;
 }
 
-interface PaginationResponse {
-  data: SystemEmployee[];
-  pagination: {
-    total: number;
-    page: number;
-    pageSize: number;
-    totalPages: number;
+interface SystemEmployeesResponse {
+  employees?: SystemEmployee[];
+  pagination?: {
+    total?: number;
+    page?: number;
+    limit?: number;
+    totalPages?: number;
   };
 }
 
@@ -38,53 +38,61 @@ export default function SystemEmployeesPage() {
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
+  const getErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
+  }, []);
+
+  const fetchEmployees = useCallback(async (page: number, searchTerm: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const { getSystemEmployees } = await import('@/lib/api/adminApi');
+      const response = await getSystemEmployees(searchTerm, page);
+      const data = response.data as SystemEmployeesResponse | undefined;
+      
+      if (data?.employees) {
+        setEmployees(data.employees);
+        setPagination({
+          total: data.pagination?.total || 0,
+          page: data.pagination?.page || 1,
+          pageSize: data.pagination?.limit || 10,
+          totalPages: data.pagination?.totalPages || 0
+        });
+      } else {
+        setEmployees([]);
+      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load system employees'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getErrorMessage]);
+
   // Debounce search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (search !== undefined) {
         setCurrentPage(1);
-        fetchEmployees(1, search);
+        void fetchEmployees(1, search);
       }
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [search]);
+  }, [fetchEmployees, search]);
 
   // Fetch employees on page change
   useEffect(() => {
-    fetchEmployees(currentPage, search);
-  }, [currentPage]);
+    void fetchEmployees(currentPage, search);
+  }, [currentPage, fetchEmployees, search]);
 
   // Initial fetch
   useEffect(() => {
-    fetchEmployees(1, '');
-  }, []);  const fetchEmployees = async (page: number, searchTerm: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-        const { getSystemEmployees } = await import('@/lib/api/adminApi');
-      const response = await getSystemEmployees(searchTerm, page);
-      
-      // The backend returns data structure: { data: { employees: [], pagination: {} } }
-      // So we need to access response.data.employees and response.data.pagination
-      if (response.data && response.data.employees) {
-        setEmployees(response.data.employees);
-        setPagination({
-          total: response.data.pagination?.total || 0,
-          page: response.data.pagination?.page || 1,
-          pageSize: response.data.pagination?.limit || 10,
-          totalPages: response.data.pagination?.totalPages || 0
-        });
-      } else {
-        // Fallback if structure is different
-        setEmployees([]);
-      }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load system employees');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    void fetchEmployees(1, '');
+  }, [fetchEmployees]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -136,8 +144,8 @@ export default function SystemEmployeesPage() {
       const { deleteSystemEmployee } = await import('@/lib/api/adminApi');
       await deleteSystemEmployee(employeeId);
       fetchEmployees(currentPage, search);
-    } catch (err: any) {
-      alert(err.message || t('adminUsers.deleteError') || 'Failed to delete employee');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('adminUsers.deleteError') || 'Failed to delete employee'));
     }
   };
 
@@ -154,7 +162,7 @@ export default function SystemEmployeesPage() {
   };
 
   const handleRetry = () => {
-    fetchEmployees(currentPage, search);
+    void fetchEmployees(currentPage, search);
   };
 
   // Loading skeleton
@@ -297,7 +305,7 @@ export default function SystemEmployeesPage() {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {employees.length > 0 ? (
-                employees.map((employee, index) => (
+                employees.map((employee) => (
                   <tr key={employee.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 last:border-0">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                       {employee.name}

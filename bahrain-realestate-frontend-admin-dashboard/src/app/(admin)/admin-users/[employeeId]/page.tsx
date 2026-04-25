@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
 interface SystemEmployee {
@@ -22,26 +22,35 @@ export default function SystemEmployeeDetailsPage() {
   const [employee, setEmployee] = useState<SystemEmployee | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchEmployeeDetails = async () => {
+
+  const getErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
+  }, []);
+
+  const fetchEmployeeDetails = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       
       const { getSystemEmployeeById } = await import('@/lib/api/adminApi');
       const response = await getSystemEmployeeById(parseInt(employeeId));
-      setEmployee(response.data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load employee details');
+      setEmployee(response.data as SystemEmployee);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load employee details'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [employeeId, getErrorMessage]);
 
   useEffect(() => {
     if (employeeId) {
-      fetchEmployeeDetails();
+      void fetchEmployeeDetails();
     }
-  }, [employeeId]);
+  }, [employeeId, fetchEmployeeDetails]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

@@ -3,7 +3,7 @@ import app from "./app";
 import { startCronJobs } from "./jobs/expireAds";
 import { db } from "./config/database";
 
-const PORT = parseInt(process.env.PORT || "3000", 10);
+const PORT = parseInt(process.env.PORT || "8000", 10);
 
 const server = app.listen(PORT, "0.0.0.0", () => {
   console.log(`✓ Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);

@@ -6,7 +6,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function CreateSystemEmployeePage() {
   const router = useRouter();
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
 
   const [formData, setFormData] = useState({
     name: '',
@@ -67,8 +67,8 @@ export default function CreateSystemEmployeePage() {
       });
       // Success - redirect to system employees list
       router.push('/admin-users');
-    } catch (err: any) {
-      setError(err.message || t('adminUsers.create.errorCreating'));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('adminUsers.create.errorCreating'));
     } finally {
       setIsSubmitting(false);
     }

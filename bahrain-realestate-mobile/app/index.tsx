@@ -386,6 +386,12 @@ const styles = StyleSheet.create({
     color: '#C6A55E',
     marginBottom: 4,
   },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 2,
+  },
   locationValueRow: {
     flexDirection: 'row',
     alignItems: 'center',

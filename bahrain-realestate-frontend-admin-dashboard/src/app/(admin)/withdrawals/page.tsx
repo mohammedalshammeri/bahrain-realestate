@@ -15,18 +15,23 @@ interface WithdrawalRequest {
   createdAt: string;
 }
 
-interface WithdrawalsResponse {
-  data: WithdrawalRequest[];
-  pagination: {
-    page: number;
-    totalPages: number;
-    total: number;
-  };
+interface WithdrawalPagination {
+  page: number;
+  totalPages: number;
+  total: number;
 }
 
 export default function WithdrawalsPage() {
   const router = useRouter();
   const { t, language } = useLanguage();
+
+  const getErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
+  }, []);
 
   // State
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
@@ -62,14 +67,14 @@ export default function WithdrawalsPage() {
 
       const { getWithdrawals } = await import('@/lib/api/adminApi');
       const response = await getWithdrawals(debouncedSearch, status, currentPage);
-      setWithdrawals(response.data);
-      setPagination(response.pagination || { page: 1, totalPages: 1, total: 0 });
-    } catch (err: any) {
-      setError(err.message || t('withdrawals.messages.errorLoading'));
+      setWithdrawals(response.data as WithdrawalRequest[]);
+      setPagination((response.pagination as WithdrawalPagination | undefined) || { page: 1, totalPages: 1, total: 0 });
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, t('withdrawals.messages.errorLoading')));
     } finally {
       setIsLoading(false);
     }
-  }, [debouncedSearch, status, currentPage]);
+  }, [currentPage, debouncedSearch, getErrorMessage, status, t]);
 
   useEffect(() => {
     fetchWithdrawals();
@@ -96,7 +101,7 @@ export default function WithdrawalsPage() {
 
       // Refresh the table
       fetchWithdrawals();
-    } catch (err) {
+    } catch {
       alert(t('withdrawals.messages.failedApprove'));
     } finally {
       setActionLoading(prev => ({ ...prev, [withdrawalId]: false }));
@@ -112,7 +117,7 @@ export default function WithdrawalsPage() {
 
       // Refresh the table
       fetchWithdrawals();
-    } catch (err) {
+    } catch {
       alert(t('withdrawals.messages.failedReject'));
     } finally {
       setActionLoading(prev => ({ ...prev, [withdrawalId]: false }));
@@ -143,20 +148,6 @@ export default function WithdrawalsPage() {
   };
 
   // Get status badge
-  const getStatusBadge = (status: string) => {
-    const baseClasses = "px-3 py-1 text-sm font-medium rounded-full";
-    switch (status) {
-      case 'PENDING':
-        return `${baseClasses} bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300`;
-      case 'APPROVED':
-        return `${baseClasses} bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300`;
-      case 'REJECTED':
-        return `${baseClasses} bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300`;
-      default:
-        return `${baseClasses} bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300`;
-    }
-  };
-
   // Clear filters
   const clearFilters = () => {
     setSearch('');

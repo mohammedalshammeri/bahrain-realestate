@@ -1,14 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getPayments, Payment, ApiError } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+interface PaymentsResponseData {
+  payments: Payment[];
+  pagination?: {
+    page?: number;
+    totalPages?: number;
+    total?: number;
+    limit?: number;
+  };
+}
 
 export default function PaymentsPage() {
   const { t, language } = useLanguage();
   const [payments, setPayments] = useState<Payment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [, setError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [pagination, setPagination] = useState({
@@ -18,11 +28,14 @@ export default function PaymentsPage() {
     limit: 10
   });
 
-  const fetchPayments = async (page: number = 1, searchTerm: string = '', status: string = '') => {
+  const fetchPayments = useCallback(async (page: number = 1, searchTerm: string = '', status: string = '') => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getPayments(searchTerm, status, page) as any;
+      const response = await getPayments(searchTerm, status, page) as {
+        success: boolean;
+        data?: PaymentsResponseData;
+      };
       
       if (response.success && response.data && Array.isArray(response.data.payments)) {
         setPayments(response.data.payments);
@@ -47,18 +60,18 @@ export default function PaymentsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
-    fetchPayments();
-  }, []);
+    void fetchPayments();
+  }, [fetchPayments]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      fetchPayments(1, search, statusFilter);
+      void fetchPayments(1, search, statusFilter);
     }, 300);
     return () => clearTimeout(timeoutId);
-  }, [search, statusFilter]);
+  }, [fetchPayments, search, statusFilter]);
 
   const getStatusBadge = (status: string) => {
     const baseClasses = "px-2 py-0.5 text-xs font-medium rounded-full";

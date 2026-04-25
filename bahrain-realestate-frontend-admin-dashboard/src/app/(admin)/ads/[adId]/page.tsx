@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { ApiError } from '@/lib/api/adminApi';
 
 interface AdDetails {
   id: string;
@@ -34,6 +36,18 @@ interface AdDetails {
   };
 }
 
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export default function AdDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -53,6 +67,21 @@ export default function AdDetailsPage() {
   const [editStartDate, setEditStartDate] = useState('');
   const [editEndDate, setEditEndDate] = useState('');
   const [editError, setEditError] = useState<string | null>(null);
+
+  const fetchAdDetails = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const { getAdById } = await import('@/lib/api/adminApi');
+      const response = await getAdById(parseInt(adId));
+      setAdDetails(response.data as AdDetails);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load ad details'));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [adId]);
 
   const normalizeAdStatus = (status?: string) => {
     const normalized = String(status || '').toLowerCase();
@@ -117,8 +146,8 @@ export default function AdDetailsPage() {
       });
       setIsEditModalOpen(false);
       await fetchAdDetails();
-    } catch (err: any) {
-      setEditError(err?.message || 'Failed to update ad');
+    } catch (err: unknown) {
+      setEditError(getErrorMessage(err, 'Failed to update ad'));
     } finally {
       setIsActionLoading(false);
     }
@@ -133,8 +162,8 @@ export default function AdDetailsPage() {
       const { deleteAd } = await import('@/lib/api/adminApi');
       await deleteAd(parseInt(adId));
       router.push('/ads');
-    } catch (err: any) {
-      alert(err?.message || 'Failed to archive ad');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed to archive ad'));
     } finally {
       setIsActionLoading(false);
     }
@@ -160,8 +189,8 @@ export default function AdDetailsPage() {
       const { setAdFeatured } = await import('@/lib/api/adminApi');
       await setAdFeatured(parseInt(adId), nextFeatured);
       await fetchAdDetails();
-    } catch (err: any) {
-      alert(err?.message || 'Failed to update featured status');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed to update featured status'));
     } finally {
       setIsActionLoading(false);
     }
@@ -169,23 +198,10 @@ export default function AdDetailsPage() {
 
   useEffect(() => {
     if (adId) {
-      fetchAdDetails();
+      void fetchAdDetails();
     }
-  }, [adId]);
-  const fetchAdDetails = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
+  }, [adId, fetchAdDetails]);
 
-      const { getAdById } = await import('@/lib/api/adminApi');
-      const response = await getAdById(parseInt(adId));
-      setAdDetails(response.data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load ad details');
-    } finally {
-      setIsLoading(false);
-    }
-  };
   const handleApprove = async () => {
     try {
       setIsActionLoading(true);
@@ -195,7 +211,7 @@ export default function AdDetailsPage() {
 
       // Refresh the page data
       await fetchAdDetails();
-    } catch (err) {
+    } catch {
       alert('Failed to approve ad');
     } finally {
       setIsActionLoading(false);
@@ -220,7 +236,7 @@ export default function AdDetailsPage() {
       await rejectAd(parseInt(adId), trimmed);
       setIsRejectModalOpen(false);
       await fetchAdDetails();
-    } catch (err) {
+    } catch {
       alert('Failed to reject ad');
     } finally {
       setIsActionLoading(false);
@@ -767,10 +783,13 @@ export default function AdDetailsPage() {
               {((adDetails.property.images && adDetails.property.images.length > 0) || (adDetails.property.propertyImages && adDetails.property.propertyImages.length > 0)) ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {(adDetails.property.images || adDetails.property.propertyImages?.map((img) => img.imageUrl || '').filter(Boolean) || []).map((image, index) => (
-                    <div key={index} className="aspect-square overflow-hidden rounded-lg border border-gray-200">
-                      <img
+                    <div key={index} className="relative aspect-square overflow-hidden rounded-lg border border-gray-200">
+                      <Image
                         src={image}
                         alt={`Property image ${index + 1}`}
+                        fill
+                        unoptimized
+                        sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                         className="w-full h-full object-contain bg-gray-100 dark:bg-gray-800 hover:scale-105 transition-transform duration-200"
                       />
                     </div>

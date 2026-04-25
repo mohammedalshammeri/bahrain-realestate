@@ -1,13 +1,17 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import bcrypt from "bcrypt";
-import { AuthRequest } from "../../middleware/auth";
-import { db as prisma } from "../../config/database";
-import { AppError } from "../../middleware/errorHandler";
+import { AuthRequest } from "../middleware/auth";
+import { db as prisma } from "../config/database";
+import { AppError } from "../middleware/errorHandler";
 
 export const deleteIndividualAccountController = async (req: AuthRequest, res: Response) => {
   try {
-    const userId = req.user.id;
+    const userId = req.user?.individualId;
     const { password } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
     if (!password) {
       return res.status(400).json({ success: false, message: "Password is required" });
@@ -21,7 +25,11 @@ export const deleteIndividualAccountController = async (req: AuthRequest, res: R
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
+    if (!user.passwordHash) {
+      return res.status(400).json({ success: false, message: "Password login is not available for this account" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: "Incorrect password" });
     }
@@ -43,8 +51,12 @@ export const deleteIndividualAccountController = async (req: AuthRequest, res: R
 
 export const deleteCompanyAccountController = async (req: AuthRequest, res: Response) => {
   try {
-    const employeeId = req.user.id;
+    const employeeId = req.user?.id;
     const { password } = req.body;
+
+    if (!employeeId) {
+      return res.status(401).json({ success: false, message: "Unauthorized" });
+    }
 
     if (!password) {
       return res.status(400).json({ success: false, message: "Password is required" });
@@ -55,11 +67,11 @@ export const deleteCompanyAccountController = async (req: AuthRequest, res: Resp
       include: { company: true },
     });
 
-    if (!employee || employee.role !== 'owner') {
+    if (!employee || employee.role !== "OWNER") {
       return res.status(403).json({ success: false, message: "Only owners can delete the company account" });
     }
 
-    const isMatch = await bcrypt.compare(password, employee.password);
+    const isMatch = await bcrypt.compare(password, employee.passwordHash);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: "Incorrect password" });
     }

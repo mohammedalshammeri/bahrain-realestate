@@ -1,11 +1,40 @@
 const API_BASE = process.env.NEXT_PUBLIC_ADMIN_API_BASE_URL || 'http://localhost:8000/api/admin';
 
+type JsonPrimitive = string | number | boolean | null;
+type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
+type QueryValue = string | number | boolean | null | undefined;
+type QueryParams = Record<string, QueryValue>;
+
+function buildQueryString(params: QueryParams): string {
+  const query = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+
+    query.set(key, String(value));
+  }
+
+  return query.toString();
+}
+
 interface LoginCredentials {
   username: string;
   password: string;
 }
 
-interface ApiResponse<T = any> {
+interface LoginResponseData {
+  token: string;
+  admin?: {
+    id: number;
+    name: string;
+    username: string;
+  };
+}
+
+interface ApiResponse<T = unknown> {
   success: boolean;
   message: string;
   data?: T;
@@ -199,7 +228,7 @@ export class ApiError extends Error {
   constructor(
     message: string,
     public status?: number,
-    public data?: any
+    public data?: unknown
   ) {
     super(message);
     this.name = 'ApiError';
@@ -367,7 +396,7 @@ class AdminApiService {
   getToken(): string | null {
     return this.token;
   }
-  private async request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  private async request<T = unknown>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${API_BASE}${endpoint}`;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -406,11 +435,11 @@ class AdminApiService {
   }
 
   // Authentication
-  async login(credentials: LoginCredentials): Promise<ApiResponse> {
+  async login(credentials: LoginCredentials): Promise<ApiResponse<LoginResponseData>> {
     const response = await this.request('/login', {
       method: 'POST',
       body: JSON.stringify(credentials),
-    });
+    }) as ApiResponse<LoginResponseData>;
     
     if (response.success && response.data?.token) {
       this.setToken(response.data.token);
@@ -432,12 +461,12 @@ class AdminApiService {
   }
 
   // Companies
-  async getCompanies(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getCompanies(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     
     return this.request(`/companies?${query}`);
   }
@@ -456,12 +485,12 @@ class AdminApiService {
   }
 
   // Properties
-  async getProperties(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getProperties(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
 
     return this.request(`/properties?${query}`);
   }
@@ -486,13 +515,13 @@ class AdminApiService {
   }
 
   // Individual Properties (admin)
-  async getIndividualProperties(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getIndividualProperties(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       t: Date.now().toString(), // Cache buster
       ...params,
-    }).toString();
+    });
     return this.request(`/individual-properties?${query}`);
   }
 
@@ -528,7 +557,7 @@ class AdminApiService {
   }
 
   async markIndividualPropertyAsSold(id: number, offerId?: number) {
-    const body: any = {};
+    const body: { offerId?: number } = {};
     if (typeof offerId === 'number' && !Number.isNaN(offerId)) {
       body.offerId = offerId;
     }
@@ -546,7 +575,7 @@ class AdminApiService {
   }
 
   async updatePropertyStatus(id: number, status: string, durationDays?: number, expiresAt?: string) {
-    const body: any = { status };
+    const body: { status: string; durationDays?: number; expiresAt?: string } = { status };
     if (typeof durationDays === 'number' && !Number.isNaN(durationDays)) body.durationDays = durationDays;
     if (expiresAt) body.expiresAt = expiresAt;
 
@@ -581,12 +610,12 @@ class AdminApiService {
   }
 
   // Complaints
-  async getComplaints(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getComplaints(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     return this.request(`/complaints?${query}`);
   }
 
@@ -598,12 +627,12 @@ class AdminApiService {
   }
 
   // Ads
-  async getAds(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getAds(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     return this.request(`/ads?${query}`);
   }
 
@@ -645,22 +674,22 @@ class AdminApiService {
   }
 
   // Payments
-  async getPayments(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getPayments(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     return this.request(`/payments?${query}`);
   }
 
   // Employees
-  async getEmployees(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getEmployees(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     return this.request(`/employees?${query}`);
   }
 
@@ -671,7 +700,7 @@ class AdminApiService {
     });
   }
 
-  async createEmployee(companyId: number, data: any) {
+  async createEmployee(companyId: number, data: JsonObject) {
     return this.request(`/companies/${companyId}/employees`, {
       method: 'POST',
       body: JSON.stringify(data),
@@ -679,12 +708,12 @@ class AdminApiService {
   }
 
   // System Employees
-  async getSystemEmployees(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getSystemEmployees(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     return this.request(`/system-employees?${query}`);
   }
 
@@ -692,14 +721,14 @@ class AdminApiService {
     return this.request(`/system-employees/${id}`);
   }
 
-  async createSystemEmployee(data: any) {
+  async createSystemEmployee(data: JsonObject) {
     return this.request('/system-employees', {
       method: 'POST',
       body: JSON.stringify(data),
     });
   }
 
-  async updateSystemEmployee(id: number, data: any) {
+  async updateSystemEmployee(id: number, data: JsonObject) {
     return this.request(`/system-employees/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -713,12 +742,12 @@ class AdminApiService {
   }
 
   // Withdrawals
-  async getWithdrawals(params: Record<string, any> = {}) {
-    const query = new URLSearchParams({
+  async getWithdrawals(params: QueryParams = {}) {
+    const query = buildQueryString({
       page: '1',
       limit: '10',
       ...params
-    }).toString();
+    });
     return this.request(`/withdrawals?${query}`);
   }
 
@@ -760,7 +789,7 @@ class AdminApiService {
     return this.request('/settings');
   }
 
-  async updateSettings(settings: Record<string, any>) {
+  async updateSettings(settings: JsonObject) {
     return this.request('/settings', {
       method: 'PUT',
       body: JSON.stringify(settings),
@@ -777,7 +806,7 @@ export const adminApi = new AdminApiService();
 
 // Standalone functions for easier imports
 export const getCompanies = async (search?: string, page: number = 1, limit: number = 10, status?: string) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) {
     params.search = search;
   }
@@ -787,7 +816,7 @@ export const getCompanies = async (search?: string, page: number = 1, limit: num
   return adminApi.getCompanies(params);
 };
 
-export const getProperties = async (params: Record<string, any> = {}) => {
+export const getProperties = async (params: QueryParams = {}) => {
   return adminApi.getProperties(params);
 };
 
@@ -801,7 +830,7 @@ export const updatePropertyDetails = (
 };
 
 export const getIndividualProperties = async (search?: string, status: string = 'all', page: number = 1, limit: number = 10) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) params.search = search;
   if (status && status !== 'all') params.status = status;
   return adminApi.getIndividualProperties(params);
@@ -849,7 +878,7 @@ export const getDashboardStats = () => {
 };
 
 export const getComplaints = async (status?: string, submitterType?: string, search?: string, page: number = 1, limit: number = 10, sortOrder: 'asc' | 'desc' = 'desc') => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (status && status !== 'all') {
     params.status = status;
   }
@@ -885,7 +914,7 @@ export const getSettings = () => {
   return adminApi.getSettings();
 };
 
-export const updateSettings = (settings: Record<string, any>) => {
+export const updateSettings = (settings: JsonObject) => {
   return adminApi.updateSettings(settings);
 };
 
@@ -914,7 +943,7 @@ export const updateComplaintStatus = (id: number, status: string, notes?: string
 };
 
 export const getAds = async (search?: string, adType?: string, status?: string, page: number = 1, limit: number = 10) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) params.search = search;
   if (adType) params.type = adType;
   if (status) params.status = status;
@@ -946,14 +975,14 @@ export const updateAd = (id: number, data: Partial<Pick<Ad, 'title' | 'descripti
 };
 
 export const getPayments = async (search?: string, status?: string, page: number = 1, limit: number = 10) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) params.search = search;
   if (status) params.status = status;
   return adminApi.getPayments(params);
 };
 
 export const getEmployees = async (search?: string, role?: string, page: number = 1, limit: number = 10) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) params.search = search;
   if (role) params.role = role;
   return adminApi.getEmployees(params);
@@ -963,12 +992,12 @@ export const updateEmployeeStatus = (id: number, status: string) => {
   return adminApi.updateEmployeeStatus(id, status);
 };
 
-export const createEmployee = (companyId: number, data: any) => {
+export const createEmployee = (companyId: number, data: JsonObject) => {
   return adminApi.createEmployee(companyId, data);
 };
 
 export const getSystemEmployees = async (search?: string, page: number = 1, limit: number = 10) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) params.search = search;
   return adminApi.getSystemEmployees(params);
 };
@@ -977,11 +1006,11 @@ export const getSystemEmployeeById = (id: number) => {
   return adminApi.getSystemEmployeeById(id);
 };
 
-export const createSystemEmployee = (data: any) => {
+export const createSystemEmployee = (data: JsonObject) => {
   return adminApi.createSystemEmployee(data);
 };
 
-export const updateSystemEmployee = (id: number, data: any) => {
+export const updateSystemEmployee = (id: number, data: JsonObject) => {
   return adminApi.updateSystemEmployee(id, data);
 };
 
@@ -990,7 +1019,7 @@ export const deleteSystemEmployee = (id: number) => {
 };
 
 export const getWithdrawals = async (search?: string, status?: string, page: number = 1, limit: number = 10) => {
-  const params: Record<string, any> = { page: page.toString(), limit: limit.toString() };
+  const params: QueryParams = { page: page.toString(), limit: limit.toString() };
   if (search) params.search = search;
   if (status) params.status = status;
   return adminApi.getWithdrawals(params);

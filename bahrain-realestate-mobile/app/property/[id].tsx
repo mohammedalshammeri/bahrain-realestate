@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking, Dimensions, FlatList, Platform } from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { Image } from 'expo-image';
-import { Video } from 'expo-av';
+import { Video, ResizeMode } from 'expo-av';
 import { useTranslation } from 'react-i18next';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../src/api/api';
@@ -222,7 +222,7 @@ export default function PropertyDetails() {
                       source={{ uri: activeItem.url }}
                       style={styles.mediaImage}
                       useNativeControls
-                      resizeMode="contain"
+                      resizeMode={ResizeMode.CONTAIN}
                       isLooping={false}
                       shouldPlay={false}
                     />

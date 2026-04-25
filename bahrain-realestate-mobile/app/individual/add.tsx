@@ -85,7 +85,7 @@ export default function IndividualAddPropertyScreen() {
   const buildingAgeRef = useRef<TextInput>(null);
   const parkingCountRef = useRef<TextInput>(null);
 
-  const focusAvailable = (...refs: React.RefObject<TextInput>[]) => {
+  const focusAvailable = (...refs: Array<React.RefObject<TextInput | null>>) => {
     for (const ref of refs) {
       if (ref.current) {
         ref.current.focus();

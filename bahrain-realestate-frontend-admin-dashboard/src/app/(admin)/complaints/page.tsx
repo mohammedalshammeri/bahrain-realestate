@@ -1,8 +1,30 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getComplaints, updateComplaintStatus, Complaint, ApiError } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+type ComplaintStatus = Complaint['status'];
+
+interface ComplaintPropertyImage {
+  imageUrl: string;
+  displayOrder?: number;
+  createdAt?: string;
+  isVideo?: boolean;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function ComplaintsPage() {
   const { t, language, direction } = useLanguage();
@@ -35,7 +57,7 @@ export default function ComplaintsPage() {
     { value: 'COMPANY', label: t('complaints.submitterType.company') }
   ];
 
-  const fetchComplaints = async (page: number = 1, status?: string, submitterType?: string, order?: 'asc' | 'desc') => {
+  const fetchComplaints = useCallback(async (page: number = 1, status?: string, submitterType?: string, order?: 'asc' | 'desc') => {
     try {
       setIsLoading(true);
       setError(null);
@@ -48,42 +70,35 @@ export default function ComplaintsPage() {
         total: response?.pagination?.total || 0,
         limit: response?.pagination?.limit || 10
       });
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError(t('complaints.messages.errorLoading'));
-      }
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, t('complaints.messages.errorLoading')));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [pagination.limit, sortOrder, t]);
 
   useEffect(() => {
-    fetchComplaints();
-  }, []);
+    void fetchComplaints();
+  }, [fetchComplaints]);
 
   useEffect(() => {
-    fetchComplaints(1, selectedStatus !== 'all' ? selectedStatus : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortOrder]);
+    void fetchComplaints(1, selectedStatus !== 'all' ? selectedStatus : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder);
+  }, [fetchComplaints, selectedStatus, selectedSubmitterType, sortOrder]);
 
   const handleStatusChange = (status: string) => {
     setSelectedStatus(status);
-    fetchComplaints(1, status !== 'all' ? status : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder);
   };
 
   const handleSubmitterTypeChange = (submitterType: string) => {
     setSelectedSubmitterType(submitterType);
-    fetchComplaints(1, selectedStatus !== 'all' ? selectedStatus : undefined, submitterType !== 'all' ? submitterType : undefined, sortOrder);
   };
 
   const handleUpdateStatus = async (id: number, newStatus: string) => {
     try {
       await updateComplaintStatus(id, newStatus);
-      fetchComplaints(pagination.page, selectedStatus !== 'all' ? selectedStatus : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder);
-    } catch (err: any) {
-      alert(err.message || t('companyEmployees.messages.updateFail'));
+      await fetchComplaints(pagination.page, selectedStatus !== 'all' ? selectedStatus : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('companyEmployees.messages.updateFail')));
     }
   };
 
@@ -269,7 +284,7 @@ export default function ComplaintsPage() {
                     ))}
                   </tr>
                 ))
-              ) : (Array.isArray(complaints) ? complaints.map((complaint, index) => (
+              ) : (Array.isArray(complaints) ? complaints.map((complaint) => (
                 <tr key={complaint.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 last:border-0">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">
                     <span className="font-mono text-gray-500 dark:text-gray-400">#</span>{complaint.id}
@@ -359,7 +374,7 @@ export default function ComplaintsPage() {
             <h3 className="mt-2 text-sm font-medium text-gray-900 dark:text-white">{t('complaints.messages.errorLoading')}</h3>
             <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">{error}</p>
             <button 
-              onClick={() => fetchComplaints(1, selectedStatus !== 'all' ? selectedStatus : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder)}
+              onClick={() => void fetchComplaints(1, selectedStatus !== 'all' ? selectedStatus : undefined, selectedSubmitterType !== 'all' ? selectedSubmitterType : undefined, sortOrder)}
               className="mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               {t('common.tryAgain')}
@@ -565,20 +580,23 @@ export default function ComplaintsPage() {
                             : 'Property'}
                         </p>
                         {(() => {
-                          const images = selectedComplaint.property.propertyImages;
+                          const images = selectedComplaint.property.propertyImages as ComplaintPropertyImage[] | undefined;
                           if (!images || images.length === 0) return null;
 
                           // Try to find the first valid image (not video)
-                          const validImageObj = images.find((pi: any) => !pi.isVideo && !isVideoFile(pi.imageUrl));
+                          const validImageObj = images.find((pi) => !pi.isVideo && !isVideoFile(pi.imageUrl));
                           const imageUrl = validImageObj ? validImageObj.imageUrl : images[0].imageUrl;
 
                           return (
                             <div className="mt-3">
                               <span className="text-sm font-medium text-gray-600 dark:text-gray-400">{t('complaints.details.propertyImage')}:</span>
                               <div className="mt-2">
-                                <img
+                                <Image
                                   src={getImageUrl(imageUrl)}
                                   alt={selectedComplaint.property?.title || 'Property'}
+                                  width={768}
+                                  height={384}
+                                  unoptimized
                                   className="max-h-64 w-auto max-w-full rounded-md object-contain border border-gray-200 dark:border-gray-700 block"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none';
@@ -649,7 +667,7 @@ export default function ComplaintsPage() {
                     value={selectedComplaint.status}
                     onChange={(e) => {
                       handleUpdateStatus(selectedComplaint.id, e.target.value);
-                      setSelectedComplaint({...selectedComplaint, status: e.target.value as any});
+                      setSelectedComplaint({ ...selectedComplaint, status: e.target.value as ComplaintStatus });
                     }}
                     className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   >

@@ -60,7 +60,8 @@ export default function CreateEmployeePage() {
     }
 
     setIsSubmitting(true);
-    setError(null);    try {
+    setError(null);
+    try {
       const { createEmployee } = await import('@/lib/api/adminApi');
       await createEmployee(parseInt(companyId), {
         name: formData.name,
@@ -71,8 +72,8 @@ export default function CreateEmployeePage() {
 
       // Success - redirect to employees list
       router.push(`/companies/${companyId}/employees`);
-    } catch (err: any) {
-      setError(err.message || 'An error occurred while creating the employee');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred while creating the employee');
     } finally {
       setIsSubmitting(false);
     }

@@ -1,9 +1,31 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Ad, getAds, approveAd, rejectAd, deleteAd, setAdFeatured } from '@/lib/api/adminApi';
+import { Ad, ApiError, approveAd, deleteAd, getAds, rejectAd, setAdFeatured } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+interface AdsResponseData {
+  ads: Ad[];
+  pagination: {
+    total: number;
+    page: number;
+    limit?: number;
+    totalPages: number;
+  };
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function AdsPage() {
   const router = useRouter();
@@ -23,46 +45,47 @@ export default function AdsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
 
+  const fetchAds = useCallback(async (page: number, searchTerm: string, adType: string, status: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const response = await getAds(searchTerm, adType, status, page);
+      const data = response.data as AdsResponseData;
+      setAds(data.ads);
+      setPagination({
+        total: data.pagination.total,
+        page: data.pagination.page,
+        pageSize: data.pagination.limit || 10,
+        totalPages: data.pagination.totalPages
+      });
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, t('ads.messages.errorLoading')));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [t]);
+
   // Debounce search
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (search !== undefined) {
         setCurrentPage(1);
-        fetchAds(1, search, adTypeFilter, statusFilter);
+        void fetchAds(1, search, adTypeFilter, statusFilter);
       }
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [search]);
+  }, [adTypeFilter, fetchAds, search, statusFilter]);
 
   // Fetch ads on filter or page change
   useEffect(() => {
-    fetchAds(currentPage, search, adTypeFilter, statusFilter);
-  }, [currentPage, adTypeFilter, statusFilter]);
+    void fetchAds(currentPage, search, adTypeFilter, statusFilter);
+  }, [adTypeFilter, currentPage, fetchAds, search, statusFilter]);
 
   // Initial fetch
   useEffect(() => {
-    fetchAds(1, '', '', '');
-  }, []);
-
-  const fetchAds = async (page: number, searchTerm: string, adType: string, status: string) => {
-    try {
-      setIsLoading(true);
-      setError(null);
-      const response = await getAds(searchTerm, adType, status, page);
-      setAds(response.data.ads);
-      setPagination({
-        total: response.data.pagination.total,
-        page: response.data.pagination.page,
-        pageSize: response.data.pagination.limit || 10,
-        totalPages: response.data.pagination.totalPages
-      });
-    } catch (err: any) {
-      setError(err.message || t('ads.messages.errorLoading'));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    void fetchAds(1, '', '', '');
+  }, [fetchAds]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -115,8 +138,8 @@ export default function AdsPage() {
   const handleApproveAd = async (adId: number) => {
     try {
       await approveAd(adId);
-      fetchAds(currentPage, search, adTypeFilter, statusFilter);
-    } catch (err) {
+      await fetchAds(currentPage, search, adTypeFilter, statusFilter);
+    } catch {
       alert(t('ads.messages.failedApprove'));
     }
   };
@@ -129,8 +152,8 @@ export default function AdsPage() {
       }
 
       await rejectAd(adId, reason.trim());
-      fetchAds(currentPage, search, adTypeFilter, statusFilter);
-    } catch (err) {
+      await fetchAds(currentPage, search, adTypeFilter, statusFilter);
+    } catch {
       alert(t('ads.messages.failedReject'));
     }
   };
@@ -139,8 +162,8 @@ export default function AdsPage() {
     if (confirm(t('ads.messages.confirmDelete'))) {
       try {
         await deleteAd(adId);
-        fetchAds(currentPage, search, adTypeFilter, statusFilter);
-      } catch (err) {
+        await fetchAds(currentPage, search, adTypeFilter, statusFilter);
+      } catch {
         alert(t('ads.messages.failedDelete'));
       }
     }
@@ -171,9 +194,9 @@ export default function AdsPage() {
 
     try {
       await setAdFeatured(ad.id, nextFeatured);
-      fetchAds(currentPage, search, adTypeFilter, statusFilter);
-    } catch (err: any) {
-      alert(err?.message || t('ads.messages.failedApprove'));
+      await fetchAds(currentPage, search, adTypeFilter, statusFilter);
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('ads.messages.failedApprove')));
     }
   };
 
@@ -190,7 +213,7 @@ export default function AdsPage() {
   };
 
   const handleRetry = () => {
-    fetchAds(currentPage, search, adTypeFilter, statusFilter);
+    void fetchAds(currentPage, search, adTypeFilter, statusFilter);
   };
 
   // Loading skeleton
@@ -351,7 +374,7 @@ export default function AdsPage() {
             </thead>
             <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
               {ads.length > 0 ? (
-                ads.map((ad, index) => (
+                ads.map((ad) => (
                   <tr
                     key={ad.id}
                     className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors border-b dark:border-gray-700 last:border-0"
@@ -406,7 +429,7 @@ export default function AdsPage() {
                         {/* View Button */}
                         {ad.property && (
                           <button
-                            onClick={() => handleViewAd(ad.property!.id)}
+                            onClick={() => handleViewAd(ad.id)}
                             className="p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-900/20 dark:text-blue-400 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
                             title={t('ads.actions.view')}
                           >

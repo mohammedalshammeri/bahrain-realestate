@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 
+type SystemSettingsMap = Record<string, string | undefined>;
+
 export default function SystemPage() {
   const router = useRouter();
   const { t } = useLanguage();
@@ -20,7 +22,6 @@ export default function SystemPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -31,7 +32,7 @@ export default function SystemPage() {
         const { getSettings } = await import('@/lib/api/adminApi');
         const response = await getSettings();
         if (response?.data) {
-          const data = response.data;
+          const data = response.data as SystemSettingsMap;
           setFormData(prev => ({
             ...prev,
             platformName: data['platformName'] || data['general.siteName'] || '',
@@ -45,8 +46,6 @@ export default function SystemPage() {
         }
       } catch (error) {
         console.error('Failed to load system settings:', error);
-      } finally {
-        setIsLoading(false);
       }
     };
     loadSettings();
@@ -75,7 +74,9 @@ export default function SystemPage() {
 
     setIsSubmitting(true);
     setError(null);
-    setSuccessMessage(null);    try {
+    setSuccessMessage(null);
+
+    try {
       const { updateSettings } = await import('@/lib/api/adminApi');
       await updateSettings({
         platformName: formData.platformName,
@@ -88,8 +89,8 @@ export default function SystemPage() {
       });
 
       setSuccessMessage(t('system.messages.saveSuccess'));
-    } catch (err: any) {
-      setError(err.message || t('system.messages.saveFailed'));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : t('system.messages.saveFailed'));
     } finally {
       setIsSubmitting(false);
     }

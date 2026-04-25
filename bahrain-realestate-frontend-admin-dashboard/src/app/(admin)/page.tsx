@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getDashboardStats, DashboardStats, ApiError } from '@/lib/api/adminApi';
 
 export default function AdminDashboard() {
@@ -8,24 +8,27 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);        const response = await getDashboardStats();
-        setStats(response.data);      } catch (err: any) {
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else {
-          setError('Failed to load dashboard statistics');
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchStats = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    fetchStats();
+      const response = await getDashboardStats();
+      setStats(response.data as DashboardStats);
+    } catch (err: unknown) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to load dashboard statistics');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
 
   if (error) {
     return (

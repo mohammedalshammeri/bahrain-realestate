@@ -1,0 +1,118 @@
+{
+  "target": {
+    "provider": "Hostinger",
+    "os": "Ubuntu 24.04 LTS",
+    "hostname": "srv1555684.hstgr.cloud",
+    "ip": "46.202.141.231",
+    "domains": {
+      "web": "bphub.app",
+      "api": "api.bphub.app",
+      "admin": "admin.bphub.app"
+    }
+  },
+  "goal": "Prove the project is safe and operational for public launch",
+  "phases": [
+    {
+      "id": 1,
+      "name": "DNS And Routing",
+      "tasks": [
+        "Point bphub.app to 46.202.141.231",
+        "Point api.bphub.app to 46.202.141.231",
+        "Point admin.bphub.app to 46.202.141.231",
+        "Confirm no port conflict with the 4 existing apps on the VPS",
+        "Assign unique internal ports for backend and admin"
+      ]
+    },
+    {
+      "id": 2,
+      "name": "Server Runtime Setup",
+      "tasks": [
+        "Install or verify Node.js LTS and pnpm/npm compatibility",
+        "Install and configure Nginx",
+        "Install and configure PM2 or systemd services",
+        "Create application directories, log directories, and uploads directory",
+        "Set correct file permissions for uploads and runtime logs"
+      ]
+    },
+    {
+      "id": 3,
+      "name": "Environment Variables",
+      "tasks": [
+        "Create backend production env file with DATABASE_URL, JWT_SECRET, CORS_ORIGINS, SMTP, AFS, BACKEND_PUBLIC_URL",
+        "Create admin production env file with NEXTAUTH_URL, NEXTAUTH_SECRET, NEXT_PUBLIC_API_URL, NEXT_PUBLIC_API_BASE_URL, NEXT_PUBLIC_ADMIN_API_BASE_URL",
+        "Create mobile production env values with EXPO_PUBLIC_API_URL",
+        "Verify secrets are strong and not reused from development"
+      ]
+    },
+    {
+      "id": 4,
+      "name": "Database Verification",
+      "tasks": [
+        "Run Prisma generate",
+        "Run database migrations",
+        "Verify all required tables exist including raw SQL referenced tables",
+        "Verify governorates, areas, settings, packages, and auth tables are populated as needed"
+      ]
+    },
+    {
+      "id": 5,
+      "name": "Build And Start",
+      "tasks": [
+        "Build backend successfully",
+        "Build admin successfully",
+        "Start backend behind process manager",
+        "Start admin behind process manager",
+        "Verify health endpoint and API reachability through Nginx"
+      ]
+    },
+    {
+      "id": 6,
+      "name": "SSL And Security",
+      "tasks": [
+        "Issue SSL certificates for all domains",
+        "Enforce HTTPS in Nginx",
+        "Enable firewall rules only for 22, 80, 443",
+        "Rotate server password because it was exposed in chat",
+        "Prefer SSH keys and disable password login if possible"
+      ]
+    },
+    {
+      "id": 7,
+      "name": "Critical Business Flow Testing",
+      "tasks": [
+        "Admin login works on admin.bphub.app",
+        "Company login works against api.bphub.app",
+        "Individual login works against api.bphub.app",
+        "Create and edit company property with image upload",
+        "Submit individual property",
+        "Open public property details",
+        "Create complaint",
+        "Run password reset email test",
+        "Run payment return and callback test",
+        "Verify withdrawals and moderation actions"
+      ]
+    }
+  ],
+  "hardBlockers": [
+    "Admin lint is still failing",
+    "Backend tests are effectively absent",
+    "Mobile tests are not working",
+    "Production SMTP is not yet proven",
+    "Production AFS is not yet proven",
+    "Live database schema parity is not yet proven",
+    "Real server runtime has not yet been validated",
+    "Browser-side admin token handling still needs hardening"
+  ],
+  "definitionOfReady": [
+    "All domains resolve correctly",
+    "All services start cleanly after reboot",
+    "HTTPS works on web, admin, and api",
+    "Database schema is complete and verified",
+    "SMTP sends successfully",
+    "AFS payment flow succeeds and callback updates records",
+    "Uploads are accessible and persistent",
+    "Admin login, company login, and individual login all work",
+    "No critical lint/build/typecheck failures remain",
+    "Rollback procedure is documented and tested"
+  ]
+}

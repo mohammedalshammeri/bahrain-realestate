@@ -1,19 +1,40 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getCompanyById, getCompanyEmployees, Company, Employee, ApiError } from '@/lib/api/adminApi';
+
+type CompanyDetails = Company & {
+  totalProperties?: number;
+};
+
+interface CompanyEmployeePreview extends Employee {
+  status?: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function CompanyDetailsPage() {
   const params = useParams();
   const router = useRouter();
   const companyId = params.id as string;
   
-  const [company, setCompany] = useState<Company | null>(null);
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [company, setCompany] = useState<CompanyDetails | null>(null);
+  const [employees, setEmployees] = useState<CompanyEmployeePreview[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const fetchCompanyDetails = async () => {
+  const fetchCompanyDetails = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -24,25 +45,21 @@ export default function CompanyDetailsPage() {
         getCompanyEmployees(parseInt(companyId))
       ]);
       
-      setCompany(companyResponse.data);
+      setCompany(companyResponse.data as CompanyDetails);
       // Show only first 5 employees as preview
-      setEmployees(employeesResponse.data.slice(0, 5));
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Failed to load company details');
-      }
+      setEmployees((employeesResponse.data as CompanyEmployeePreview[]).slice(0, 5));
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load company details'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [companyId]);
 
   useEffect(() => {
     if (companyId) {
-      fetchCompanyDetails();
+      void fetchCompanyDetails();
     }
-  }, [companyId]);
+  }, [companyId, fetchCompanyDetails]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -165,7 +182,7 @@ export default function CompanyDetailsPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">CR Number</label>
-              <p className="text-gray-900">{(company as any)?.crNumber || 'N/A'}</p>
+              <p className="text-gray-900">{company?.crNumber || 'N/A'}</p>
             </div>
             
             <div>
@@ -187,7 +204,7 @@ export default function CompanyDetailsPage() {
             
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Employees Limit</label>
-              <p className="text-gray-900">{(company as any)?.employeesLimit || 'Unlimited'}</p>
+              <p className="text-gray-900">{company?.employeesLimit || 'Unlimited'}</p>
             </div>
 
             <div className="md:col-span-2">
@@ -195,14 +212,17 @@ export default function CompanyDetailsPage() {
               {company?.licenseImageUrl ? (
                 <div className="mt-2">
                   <a 
-                    href={`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}${company.licenseImageUrl}`} 
+                    href={`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}${company.licenseImageUrl}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="inline-block"
                   >
-                    <img 
-                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000'}${company.licenseImageUrl}`} 
-                      alt="CR Document" 
+                    <Image
+                      src={`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}${company.licenseImageUrl}`} 
+                      alt="CR Document"
+                      width={320}
+                      height={192}
+                      unoptimized
                       className="h-48 w-auto object-contain border border-gray-200 rounded-lg hover:opacity-90 transition-opacity"
                     />
                   </a>
@@ -229,7 +249,7 @@ export default function CompanyDetailsPage() {
         <div className="px-6 py-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{(company as any)?.totalProperties || 0}</div>
+              <div className="text-2xl font-bold text-blue-600">{company?.totalProperties || 0}</div>
               <div className="text-sm text-gray-600 mt-1">Total Properties</div>
             </div>
             
@@ -281,7 +301,7 @@ export default function CompanyDetailsPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {employees.length > 0 ? (
-                employees.map((employee: Employee, index: number) => (
+                employees.map((employee, index) => (
                   <tr key={employee.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       {employee.name}
@@ -293,11 +313,11 @@ export default function CompanyDetailsPage() {
                       {employee.phone || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      {(employee as any).role || 'N/A'}
+                      {employee.role || 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={getEmployeeStatusBadge((employee as any).status || 'inactive')}>
-                        {(employee as any).status ? (employee as any).status.charAt(0).toUpperCase() + (employee as any).status.slice(1) : 'Inactive'}
+                      <span className={getEmployeeStatusBadge(employee.status || (employee.isActive ? 'active' : 'inactive'))}>
+                        {employee.status ? employee.status.charAt(0).toUpperCase() + employee.status.slice(1) : employee.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </td>
                   </tr>

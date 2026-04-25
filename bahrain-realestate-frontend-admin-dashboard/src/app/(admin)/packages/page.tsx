@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getPackages, createPackage, updatePackage, deletePackage, SubscriptionPackage } from '@/lib/api/adminApi';
 
@@ -9,7 +9,6 @@ export default function PackagesPage() {
   const { t, language } = useLanguage();
   const [packages, setPackages] = useState<SubscriptionPackage[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
@@ -35,8 +34,8 @@ export default function PackagesPage() {
       if (res.success) {
         setPackages(res.data);
       }
-    } catch (err) {
-      setError('Failed to load packages');
+    } catch {
+      alert('Failed to load packages');
     } finally {
       setLoading(false);
     }
@@ -85,8 +84,8 @@ export default function PackagesPage() {
         await createPackage(formData);
       }
       setShowModal(false);
-      fetchPackages();
-    } catch (err) {
+      await fetchPackages();
+    } catch {
       alert('Failed to save package');
     }
   };
@@ -95,8 +94,8 @@ export default function PackagesPage() {
     if (confirm('Are you sure you want to delete this package?')) {
       try {
         await deletePackage(id);
-        fetchPackages();
-      } catch (err) {
+        await fetchPackages();
+      } catch {
         alert('Failed to delete package');
       }
     }

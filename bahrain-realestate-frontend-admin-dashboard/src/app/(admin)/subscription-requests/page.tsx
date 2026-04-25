@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getSubscriptionRequests, updateSubscriptionRequestStatus, SubscriptionRequest } from '@/lib/api/adminApi';
 import { useToast } from '@/components/ui/Toast';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -32,14 +32,14 @@ export default function SubscriptionRequestsPage() {
     }
   };
 
-  const fetchRequests = async () => {
+  const fetchRequests = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await getSubscriptionRequests();
       if (response.success && response.data) {
-        setRequests(response.data);
+        setRequests(response.data as SubscriptionRequest[]);
       }
-    } catch (err) {
+    } catch {
       showToast({
         message: t('subscriptionRequests.failedLoad'),
         type: 'error'
@@ -47,7 +47,7 @@ export default function SubscriptionRequestsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showToast, t]);
 
   const handleStatusUpdate = async (id: number, status: 'APPROVED' | 'REJECTED') => {
     if (!confirm(status === 'APPROVED' ? t('subscriptionRequests.approveConfirm') : t('subscriptionRequests.rejectConfirm'))) {
@@ -60,8 +60,8 @@ export default function SubscriptionRequestsPage() {
         message: t('subscriptionRequests.statusUpdated'),
         type: 'success'
       });
-      fetchRequests();
-    } catch (error) {
+      await fetchRequests();
+    } catch {
        // Error handled in api wrapper or toast
        showToast({
         message: t('common.error'),
@@ -71,8 +71,8 @@ export default function SubscriptionRequestsPage() {
   };
 
   useEffect(() => {
-    fetchRequests();
-  }, []);
+    void fetchRequests();
+  }, [fetchRequests]);
 
   return (
     <div className="p-6">

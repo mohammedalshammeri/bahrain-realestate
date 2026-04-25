@@ -1,0 +1,360 @@
+{
+  "generatedAt": "2026-04-19",
+  "scope": {
+    "workspace": "bahrain-realestate",
+    "reviewMode": "code-and-runtime-config-only",
+    "excludedReadPatterns": [
+      "*.md",
+      "*.txt"
+    ]
+  },
+  "verification": {
+    "backendBuild": "pass",
+    "adminBuild": "pass",
+    "adminLint": "fail",
+    "mobileLint": "pass",
+    "mobileTypecheck": "pass",
+    "backendTests": "fail-no-tests-found",
+    "mobileTests": "fail-jest-expo-preset-missing"
+  },
+  "launchStatus": {
+    "readyForPublicLaunch": false,
+    "readyForStagingOrControlledSoftLaunch": true,
+    "summary": "Core code paths and builds are largely working, but production hardening, runtime validation, schema consistency, admin lint cleanup, and real deployment verification are still required before a customer-facing launch."
+  },
+  "projects": {
+    "backend": {
+      "status": "mostly-complete-with-runtime-risks",
+      "completed": [
+        "Express server boot, health check, graceful shutdown",
+        "Prisma/PostgreSQL integration",
+        "JWT auth for admin, company employees, and individuals",
+        "CORS, Helmet, body limits, rate limiting",
+        "Company property CRUD and media upload flow",
+        "Individual property workflow and offer-related admin routes",
+        "Admin routes for companies, properties, complaints, payments, ads, withdrawals, settings",
+        "Password reset foundation and mailer integration points",
+        "Scheduled expiration job wiring"
+      ],
+      "incomplete": [
+        {
+          "title": "Raw SQL feature paths are not safely normalized to Prisma models",
+          "impact": "Higher runtime risk and harder schema maintenance",
+          "files": [
+            "bahrain-realestate-backend/src/services/payment.service.ts",
+            "bahrain-realestate-backend/src/services/push.service.ts",
+            "bahrain-realestate-backend/src/services/company.service.ts"
+          ]
+        },
+        {
+          "title": "SMTP and AFS depend entirely on real production env values",
+          "impact": "Password reset and payment flows will fail if env is incomplete",
+          "files": [
+            "bahrain-realestate-backend/src/utils/mailer.ts",
+            "bahrain-realestate-backend/src/integrations/afs.ts",
+            "bahrain-realestate-backend/.env.example"
+          ]
+        },
+        {
+          "title": "Automated test coverage is effectively absent",
+          "impact": "Regression risk remains high",
+          "files": [
+            "bahrain-realestate-backend/jest.config.js",
+            "bahrain-realestate-backend/tests/afs-payment-e2e-test.ts"
+          ]
+        }
+      ],
+      "notStarted": [
+        "Meaningful backend unit test suite",
+        "Full integration test suite against staging database",
+        "Production-grade observability and alerting",
+        "Structured audit logging for privileged operations"
+      ],
+      "blockers": [
+        "Need confirmed database schema parity for all raw SQL tables referenced by services",
+        "Need real SMTP credentials and verified outbound mail flow",
+        "Need real AFS production credentials and callback validation testing"
+      ]
+    },
+    "admin": {
+      "status": "feature-complete-but-needs-hardening-and-lint-cleanup",
+      "completed": [
+        "Next.js admin app builds successfully",
+        "Credentials-based admin sign-in flow",
+        "Protected routes with middleware and JWT expiry checks",
+        "Companies, properties, complaints, ads, payments, packages, withdrawals, and profile pages",
+        "RTL/LTR language support and theme handling",
+        "Central admin API service with broad endpoint coverage",
+        "Error boundary and layout shell"
+      ],
+      "incomplete": [
+        {
+          "title": "Token handling remains client-heavy",
+          "impact": "Security posture is weaker than an httpOnly-cookie-only setup",
+          "files": [
+            "bahrain-realestate-frontend-admin-dashboard/src/lib/api/adminApi.ts",
+            "bahrain-realestate-frontend-admin-dashboard/src/lib/auth/logout.ts",
+            "bahrain-realestate-frontend-admin-dashboard/src/middleware.ts"
+          ]
+        },
+        {
+          "title": "Admin lint is failing across many pages",
+          "impact": "Type discipline and maintainability are below release standard",
+          "files": [
+            "bahrain-realestate-frontend-admin-dashboard/src/app/(admin)/properties/page.tsx",
+            "bahrain-realestate-frontend-admin-dashboard/src/app/(admin)/individual-properties/page.tsx",
+            "bahrain-realestate-frontend-admin-dashboard/src/components/theme/ThemeProvider.tsx"
+          ]
+        },
+        {
+          "title": "Image handling policy is overly broad",
+          "impact": "Should be tightened for production",
+          "files": [
+            "bahrain-realestate-frontend-admin-dashboard/next.config.ts"
+          ]
+        }
+      ],
+      "notStarted": [
+        "Meaningful admin automated test suite",
+        "CSP/HSTS hardening in frontend middleware",
+        "Unified token lifecycle refactor",
+        "Complete lint debt cleanup"
+      ],
+      "blockers": [
+        "Admin lint must be cleaned enough to restore static quality gate confidence",
+        "Token storage approach should be hardened before public launch",
+        "Need production env verification for NEXTAUTH and API URLs"
+      ]
+    },
+    "mobile": {
+      "status": "functionally-strong-and-now-static-check-clean-except-tests",
+      "completed": [
+        "Expo app configuration and routing",
+        "Company and individual auth stores",
+        "Axios API client with auth and language interceptors",
+        "Property search, listing, detail, and localized location handling",
+        "Company property create/edit flows",
+        "Individual property submission flow",
+        "Language store and RTL support",
+        "Lint and TypeScript checks passing"
+      ],
+      "incomplete": [
+        {
+          "title": "Property and individual API abstractions remain fragmented across screens",
+          "impact": "Higher duplication and maintenance cost",
+          "files": [
+            "bahrain-realestate-mobile/app/company/add.tsx",
+            "bahrain-realestate-mobile/app/individual/add.tsx",
+            "bahrain-realestate-mobile/src/api/api.ts"
+          ]
+        },
+        {
+          "title": "Upload UX lacks progress reporting and stronger validation",
+          "impact": "Poor large-media experience and weaker client safeguards",
+          "files": [
+            "bahrain-realestate-mobile/app/company/add.tsx",
+            "bahrain-realestate-mobile/app/individual/add.tsx"
+          ]
+        },
+        {
+          "title": "Web token security is weaker than native secure storage",
+          "impact": "Browser platform remains less hardened",
+          "files": [
+            "bahrain-realestate-mobile/src/api/api.ts",
+            "bahrain-realestate-mobile/src/utils/storage.ts"
+          ]
+        }
+      ],
+      "notStarted": [
+        "Working mobile automated test suite",
+        "Offline-first queue or resilient sync strategy",
+        "Shared validation schemas for property forms",
+        "Centralized property and individual API modules"
+      ],
+      "blockers": [
+        "Mobile tests are currently broken because jest-expo is not resolved",
+        "Need production runtime testing against live API and uploads",
+        "Need final validation of auth/session behavior on real devices"
+      ]
+    }
+  },
+  "crossProjectRisks": [
+    {
+      "priority": "critical",
+      "title": "Production runtime has not been verified on the target Hostinger VPS",
+      "details": "Build and static checks pass, but end-to-end runtime on the real server, domains, reverse proxy, SSL, uploads, mail, and payment callbacks are not yet proven."
+    },
+    {
+      "priority": "critical",
+      "title": "Database/schema consistency must be proven against the actual production database",
+      "details": "Code references some raw SQL tables and feature paths that must exist in the live database or runtime failures will occur."
+    },
+    {
+      "priority": "high",
+      "title": "Automated test coverage is not reliable",
+      "details": "Backend has no discoverable tests under current Jest config, and mobile tests fail due to preset resolution."
+    },
+    {
+      "priority": "high",
+      "title": "Admin static quality gate still fails",
+      "details": "Admin lint reports many no-explicit-any, hook dependency, and one theme provider initialization issue."
+    },
+    {
+      "priority": "high",
+      "title": "Production secrets and third-party integrations still need real validation",
+      "details": "SMTP, AFS, JWT/NEXTAUTH secrets, and domain routing are configured by examples only until proven on the server."
+    }
+  ],
+  "whatIsMissing": [
+    "Production DNS verification for bphub.app, api.bphub.app, admin.bphub.app",
+    "Nginx or equivalent reverse proxy validation on the shared VPS",
+    "SSL certificate validation on all production hosts",
+    "Verified production env files on the server",
+    "Database migration and schema parity verification",
+    "SMTP end-to-end test",
+    "AFS production callback test",
+    "Uploads directory permissions and retention strategy",
+    "PM2/systemd process supervision verification",
+    "Monitoring and log review after first boot"
+  ],
+  "whatHasNotStarted": [
+    "Comprehensive backend unit tests",
+    "Comprehensive admin UI tests",
+    "Working mobile test suite",
+    "Full staging smoke test checklist execution",
+    "Security hardening pass for admin token storage and browser session handling",
+    "Central API abstraction refactor for mobile property flows"
+  ],
+  "executionPlan": {
+    "phase1": {
+      "name": "Production Critical Verification",
+      "goal": "Prove the project actually runs correctly in the target environment",
+      "tasks": [
+        "Verify DNS records for root, api, and admin subdomains",
+        "Configure and verify reverse proxy routes without colliding with the other 4 VPS apps",
+        "Verify HTTPS and certificate renewal",
+        "Install production env files and secrets",
+        "Run database migrations and confirm schema parity",
+        "Boot backend, admin, and target frontend/mobile API routes on the server",
+        "Validate health endpoint and static uploads serving"
+      ]
+    },
+    "phase2": {
+      "name": "Core Business Flow Validation",
+      "goal": "Test real customer-critical paths end-to-end",
+      "tasks": [
+        "Admin login and protected navigation",
+        "Company login, property create, property edit, image upload, video upload",
+        "Individual login and property submission",
+        "Public property browse and detail rendering",
+        "Complaint creation from both sides",
+        "Password reset using SMTP",
+        "Subscription and payment flow validation",
+        "Withdrawal and admin moderation flows"
+      ]
+    },
+    "phase3": {
+      "name": "Hardening and Quality Cleanup",
+      "goal": "Reduce launch risk before public exposure",
+      "tasks": [
+        "Fix admin lint failures",
+        "Review admin token storage strategy",
+        "Tighten image domain policy in Next config",
+        "Add CSP/HSTS and security headers where missing",
+        "Validate raw SQL paths or replace them with Prisma where practical",
+        "Restore working mobile test preset",
+        "Add minimum smoke tests for backend auth and critical endpoints"
+      ]
+    },
+    "phase4": {
+      "name": "Go-Live Readiness",
+      "goal": "Reach controlled public launch confidence",
+      "tasks": [
+        "Create rollback and restart procedure",
+        "Enable process supervision and log rotation",
+        "Monitor first production boot",
+        "Confirm alerting and backup expectations",
+        "Run final go-live checklist and sign-off"
+      ]
+    }
+  },
+  "taskBoard": [
+    {
+      "id": "B-001",
+      "project": "backend",
+      "priority": "critical",
+      "status": "todo",
+      "title": "Prove live DB schema matches all raw SQL feature usage"
+    },
+    {
+      "id": "B-002",
+      "project": "backend",
+      "priority": "critical",
+      "status": "todo",
+      "title": "Configure and test production SMTP with info@bphub.app"
+    },
+    {
+      "id": "B-003",
+      "project": "backend",
+      "priority": "critical",
+      "status": "todo",
+      "title": "Configure and validate AFS production flow"
+    },
+    {
+      "id": "A-001",
+      "project": "admin",
+      "priority": "high",
+      "status": "todo",
+      "title": "Fix admin lint failures and remove high-risk any usage"
+    },
+    {
+      "id": "A-002",
+      "project": "admin",
+      "priority": "high",
+      "status": "todo",
+      "title": "Harden browser auth token handling"
+    },
+    {
+      "id": "A-003",
+      "project": "admin",
+      "priority": "medium",
+      "status": "todo",
+      "title": "Tighten Next image remote policy and security headers"
+    },
+    {
+      "id": "M-001",
+      "project": "mobile",
+      "priority": "high",
+      "status": "todo",
+      "title": "Restore a working mobile Jest setup"
+    },
+    {
+      "id": "M-002",
+      "project": "mobile",
+      "priority": "medium",
+      "status": "todo",
+      "title": "Extract shared property API modules and validation schemas"
+    },
+    {
+      "id": "OPS-001",
+      "project": "ops",
+      "priority": "critical",
+      "status": "todo",
+      "title": "Validate Hostinger reverse proxy, ports, SSL, and coexistence with 4 other apps"
+    },
+    {
+      "id": "OPS-002",
+      "project": "ops",
+      "priority": "critical",
+      "status": "todo",
+      "title": "Deploy production env files and verify live runtime"
+    },
+    {
+      "id": "OPS-003",
+      "project": "ops",
+      "priority": "critical",
+      "status": "todo",
+      "title": "Run final end-to-end smoke test suite on production hosts"
+    }
+  ]
+}

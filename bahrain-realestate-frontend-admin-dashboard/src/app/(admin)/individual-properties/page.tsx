@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import {
   distributePropertyToCompanies,
@@ -57,6 +58,73 @@ const INDIVIDUAL_PROPERTY_TYPES = [
 ] as const;
 
 const INDIVIDUAL_PURPOSES = ['sale', 'rent'] as const;
+
+interface PaginationData {
+  currentPage?: number;
+  totalPages?: number;
+  totalCount?: number;
+  limit?: number;
+}
+
+interface IndividualPropertiesResponse {
+  success: boolean;
+  data?: {
+    properties?: IndividualProperty[];
+    pagination?: PaginationData;
+  };
+}
+
+interface IndividualPropertyOffersResponse {
+  success: boolean;
+  data?: IndividualPropertyOfferSummary[];
+}
+
+interface ApprovedCompaniesResponse {
+  data?: Company[] | { companies?: Company[]; data?: Company[] };
+}
+
+interface PublicGovernorateRecord {
+  id: number;
+  name?: string;
+  nameEn?: string;
+  nameAr?: string;
+}
+
+interface PublicAreaRecord {
+  id: number;
+  governorateId: number;
+  name?: string;
+  nameEn?: string;
+  nameAr?: string;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function extractCompanies(response: ApprovedCompaniesResponse): Company[] {
+  if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  if (response.data && Array.isArray(response.data.companies)) {
+    return response.data.companies;
+  }
+
+  if (response.data && Array.isArray(response.data.data)) {
+    return response.data.data;
+  }
+
+  return [];
+}
 
 export default function IndividualPropertiesPage() {
   const { t, language } = useLanguage();
@@ -182,22 +250,21 @@ export default function IndividualPropertiesPage() {
     setSelectedOfferIdForSold(null);
 
     try {
-      const response: any = await getIndividualPropertyOffers(property.id);
+      const response = await getIndividualPropertyOffers(property.id) as IndividualPropertyOffersResponse;
       if (response?.success && Array.isArray(response.data)) {
-        setOffers(response.data as IndividualPropertyOfferSummary[]);
+        setOffers(response.data);
 
         if (forMarkSold) {
-          const accepted = (response.data as IndividualPropertyOfferSummary[]).find((o) => o.status === 'ACCEPTED');
+          const accepted = response.data.find((offer) => offer.status === 'ACCEPTED');
           if (accepted) setSelectedOfferIdForSold(accepted.id);
         }
       } else {
         setOffers([]);
         setOffersError(t('individualProperties.messages.failedLoadOffers') || 'فشل في جلب عروض الشركات لهذا العقار');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setOffers([]);
-      if (err instanceof ApiError) setOffersError(err.message);
-      else setOffersError(t('individualProperties.messages.failedLoadOffers') || 'فشل في جلب عروض الشركات لهذا العقار');
+      setOffersError(getErrorMessage(err, t('individualProperties.messages.failedLoadOffers') || 'فشل في جلب عروض الشركات لهذا العقار'));
     } finally {
       setOffersLoading(false);
     }
@@ -208,9 +275,9 @@ export default function IndividualPropertiesPage() {
       setIsLoading(true);
       setError(null);
 
-      const response: any = await getIndividualProperties(search || undefined, status, nextPage, 10);
+      const response = await getIndividualProperties(search || undefined, status, nextPage, 10) as IndividualPropertiesResponse;
       if (response?.success && response?.data?.properties) {
-        setItems(response.data.properties as IndividualProperty[]);
+        setItems(response.data.properties);
         const p = response.data.pagination;
         setPagination({
           page: p?.currentPage ?? nextPage,
@@ -224,9 +291,8 @@ export default function IndividualPropertiesPage() {
       }
 
       setPage(nextPage);
-    } catch (err: any) {
-      if (err instanceof ApiError) setError(err.message);
-      else setError('Failed to load individual properties');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load individual properties'));
     } finally {
       setIsLoading(false);
     }
@@ -256,7 +322,7 @@ export default function IndividualPropertiesPage() {
           const govJson = await govRes.json();
           if (govJson?.success && Array.isArray(govJson.data)) {
             const mapped: GovernorateOption[] = govJson.data
-              .map((g: any) => {
+              .map((g: PublicGovernorateRecord) => {
                 const nameEn = g.nameEn || g.name || '';
                 const nameAr = g.nameAr || g.name || '';
                 return {
@@ -264,7 +330,7 @@ export default function IndividualPropertiesPage() {
                   nameEn,
                   nameAr,
                   value: String(g.id), // نخزن الـ ID كنفس ما يرسله الموبايل
-                } as GovernorateOption;
+                };
               })
               .filter((g: GovernorateOption) => !!g.value);
             setGovernorateOptions(mapped);
@@ -275,7 +341,7 @@ export default function IndividualPropertiesPage() {
           const areaJson = await areaRes.json();
           if (areaJson?.success && Array.isArray(areaJson.data)) {
             const mappedAreas: AreaOption[] = areaJson.data
-              .map((a: any) => {
+              .map((a: PublicAreaRecord) => {
                 const nameEn = a.nameEn || a.name || '';
                 const nameAr = a.nameAr || a.name || '';
                 return {
@@ -284,7 +350,7 @@ export default function IndividualPropertiesPage() {
                   nameEn,
                   nameAr,
                   value: String(a.id), // نخزن الـ ID
-                } as AreaOption;
+                };
               })
               .filter((a: AreaOption) => !!a.value);
             setAreaOptions(mappedAreas);
@@ -297,12 +363,6 @@ export default function IndividualPropertiesPage() {
 
     loadLocations();
   }, []);
-
-  const headerText = useMemo(() => {
-    const statusLabel = t(`individualProperties.status.${status.toLowerCase()}`);
-    if (status === 'all') return t('individualProperties.title');
-    return t('individualProperties.titleWithStatus', { status: statusLabel });
-  }, [status, t]);
 
   const filteredAreasForEdit = useMemo(() => {
     if (!editForm.governorate) return [];
@@ -321,13 +381,11 @@ export default function IndividualPropertiesPage() {
 
     try {
       setCompaniesLoading(true);
-      const resp: any = await getApprovedCompanies(undefined, 1, 200);
-      const list = resp?.data?.companies ?? resp?.data ?? resp?.data?.data ?? [];
-      if (Array.isArray(list)) setCompanies(list);
-      else setCompanies([]);
-    } catch (e: any) {
+      const resp = await getApprovedCompanies(undefined, 1, 200) as ApprovedCompaniesResponse;
+      setCompanies(extractCompanies(resp));
+    } catch (e: unknown) {
       setCompanies([]);
-      setCompaniesError(e?.message || 'Failed to load companies');
+      setCompaniesError(getErrorMessage(e, 'Failed to load companies'));
     } finally {
       setCompaniesLoading(false);
     }
@@ -366,8 +424,8 @@ export default function IndividualPropertiesPage() {
       setIsDistributeOpen(false);
       setDistributePropertyId(null);
       await fetchData(page);
-    } catch (err: any) {
-      alert(err?.message || t('individualProperties.messages.failedDistribute'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('individualProperties.messages.failedDistribute')));
     }
   };
 
@@ -386,8 +444,8 @@ export default function IndividualPropertiesPage() {
         await rejectIndividualPropertyWithOptions(id, { reason });
       }
       await fetchData(page);
-    } catch (err: any) {
-      alert(err?.message || t('individualProperties.messages.failedReject'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('individualProperties.messages.failedReject')));
     }
   };
 
@@ -396,8 +454,8 @@ export default function IndividualPropertiesPage() {
     try {
       await resetIndividualPropertyToPending(id);
       await fetchData(page);
-    } catch (err: any) {
-      alert(err?.message || t('individualProperties.messages.failedReset'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('individualProperties.messages.failedReset')));
     }
   };
 
@@ -408,8 +466,8 @@ export default function IndividualPropertiesPage() {
       setOffersModalOpen(false);
       setOffersProperty(null);
       await fetchData(page);
-    } catch (err: any) {
-      alert(err?.message || t('individualProperties.messages.failedMarkSold'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('individualProperties.messages.failedMarkSold')));
     }
   };
 
@@ -418,15 +476,15 @@ export default function IndividualPropertiesPage() {
     try {
       await deleteIndividualProperty(id);
       await fetchData(page);
-    } catch (err: any) {
-      alert(err?.message || t('individualProperties.messages.failedDelete'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('individualProperties.messages.failedDelete')));
     }
   };
 
   const openEdit = (p: IndividualProperty) => {
     setEditProperty(p);
     setEditForm({
-      title: (p.title ?? '') as any,
+      title: p.title ?? '',
       minimumPrice: String(p.minimumPrice ?? ''),
       governorate: p.governorate ?? '', // يخزن ID كنص (نفس الموبايل)
       area: p.area ?? '',               // يخزن ID كنص
@@ -441,7 +499,7 @@ export default function IndividualPropertiesPage() {
   const submitEdit = async () => {
     if (!editProperty) return;
     try {
-      const payload: any = {
+      const payload: Partial<IndividualProperty> = {
         title: editForm.title,
         description: editForm.description,
         type: editForm.type,
@@ -456,8 +514,8 @@ export default function IndividualPropertiesPage() {
       setIsEditOpen(false);
       setEditProperty(null);
       await fetchData(page);
-    } catch (err: any) {
-      alert(err?.message || t('individualProperties.messages.failedUpdate'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, t('individualProperties.messages.failedUpdate')));
     }
   };
 
@@ -570,7 +628,6 @@ export default function IndividualPropertiesPage() {
               ) : (
                 items.map((p) => {
                   const statusUpper = String(p.status || '').toUpperCase();
-                  const isRejected = statusUpper === 'REJECTED';
                   const canDistribute =
                     statusUpper === 'DRAFT' || statusUpper === 'PENDING_ADMIN' || statusUpper === 'SENT_TO_COMPANIES';
 
@@ -1017,7 +1074,7 @@ export default function IndividualPropertiesPage() {
                         className="block h-16 w-16 rounded-md overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900"
                         aria-label={`${t('individualProperties.fields.images')} ${idx + 1}`}
                       >
-                        <img src={url} alt="" className="h-full w-full object-cover" />
+                        <Image src={url} alt="" width={64} height={64} unoptimized className="h-full w-full object-cover" />
                       </a>
                     ))}
                   </div>
@@ -1095,9 +1152,16 @@ export default function IndividualPropertiesPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-0 overflow-y-auto">
                 <div className="p-5">
-                  <div className="aspect-[4/3] w-full rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
+                  <div className="relative aspect-[4/3] w-full rounded-lg bg-gray-100 dark:bg-gray-800 overflow-hidden">
                     {activePreviewImage ? (
-                      <img src={getImageUrl(activePreviewImage)} alt={previewProperty.title || 'Property'} className="w-full h-full object-contain bg-gray-100 dark:bg-gray-800" />
+                      <Image
+                        src={getImageUrl(activePreviewImage)}
+                        alt={previewProperty.title || 'Property'}
+                        fill
+                        unoptimized
+                        sizes="(min-width: 768px) 50vw, 100vw"
+                        className="w-full h-full object-contain bg-gray-100 dark:bg-gray-800"
+                      />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-gray-400">
                         <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1114,10 +1178,10 @@ export default function IndividualPropertiesPage() {
                           key={`${previewProperty.id}-img-${idx}`}
                           type="button"
                           onClick={() => setPreviewImageIndex(idx)}
-                          className={`h-14 w-14 rounded-md overflow-hidden border ${idx === previewImageIndex ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'} flex-shrink-0`}
+                          className={`relative h-14 w-14 rounded-md overflow-hidden border ${idx === previewImageIndex ? 'border-blue-500' : 'border-gray-200 dark:border-gray-700'} flex-shrink-0`}
                           aria-label={`Image ${idx + 1}`}
                         >
-                          <img src={getImageUrl(img)} alt="" className="h-full w-full object-contain bg-gray-100 dark:bg-gray-800" />
+                          <Image src={getImageUrl(img)} alt="" fill unoptimized sizes="56px" className="h-full w-full object-contain bg-gray-100 dark:bg-gray-800" />
                         </button>
                       ))}
                     </div>
@@ -1159,7 +1223,7 @@ export default function IndividualPropertiesPage() {
                               <video
                                 src={url}
                                 className="w-full h-full object-contain bg-black pointer-events-none"
-                                onError={(e) => {
+                                onError={() => {
                                    // Keep it silent or show placeholder
                                 }}
                               />
@@ -1318,7 +1382,7 @@ export default function IndividualPropertiesPage() {
                             {offer.companyPrice != null ? Number(offer.companyPrice).toLocaleString() : '-'}
                           </td>
                           <td className="px-3 py-2 whitespace-nowrap text-gray-800 dark:text-gray-100">
-                            {t(`individualProperties.offerStatus.${offer.status.toLowerCase()}` as any, { defaultValue: offer.status })}
+                            {t(`individualProperties.offerStatus.${offer.status.toLowerCase()}`, { defaultValue: offer.status })}
                             {isWinner && (
                               <span className="ml-2 rtl:mr-2 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200">
                                 {offersProperty.purpose?.toLowerCase() === 'rent' ? t('individualProperties.status.rented', { defaultValue: 'مؤجر' }) : t('individualProperties.status.sold')}

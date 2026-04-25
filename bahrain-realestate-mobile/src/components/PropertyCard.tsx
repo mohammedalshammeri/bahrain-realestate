@@ -284,6 +284,22 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  videoBadge: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    gap: 4,
+    zIndex: 1,
+  },
+  videoCountText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
   content: {
     padding: 16,
   },

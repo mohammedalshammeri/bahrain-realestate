@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getProfile, AdminProfile, ApiError } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -10,13 +10,13 @@ export default function ProfilePage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
       const response = await getProfile();
-      setProfile(response.data);
-    } catch (err: any) {
+      setProfile(response.data as AdminProfile);
+    } catch (err: unknown) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
@@ -25,11 +25,11 @@ export default function ProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
 
   useEffect(() => {
-    fetchProfile();
-  }, []);
+    void fetchProfile();
+  }, [fetchProfile]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);

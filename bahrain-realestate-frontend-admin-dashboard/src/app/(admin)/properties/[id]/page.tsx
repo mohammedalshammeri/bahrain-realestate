@@ -1,11 +1,42 @@
 'use client';
 
-'use client';
-
-import { useState, useEffect, useMemo } from 'react';
+import Image from 'next/image';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { getCompanies, getPropertyById, updatePropertyStatus, Property, ApiError, Company, distributePropertyToCompanies } from '@/lib/api/adminApi';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+interface PropertyDetailsResponse {
+  data?: Property;
+}
+
+interface ApprovedCompaniesResponse {
+  data?: Company[] | { companies?: Company[] };
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+}
+
+function extractCompanies(response: ApprovedCompaniesResponse): Company[] {
+  if (Array.isArray(response.data)) {
+    return response.data;
+  }
+
+  if (response.data && Array.isArray(response.data.companies)) {
+    return response.data.companies;
+  }
+
+  return [];
+}
 
 export default function PropertyDetailsPage() {
   const { t, language } = useLanguage();
@@ -64,47 +95,40 @@ export default function PropertyDetailsPage() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<number | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
-  const fetchPropertyDetails = async () => {
+  const fetchPropertyDetails = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await getPropertyById(parseInt(propertyId));
-      setProperty(response.data);
-    } catch (err: any) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Failed to load property details');
-      }
+      const response = await getPropertyById(parseInt(propertyId, 10)) as PropertyDetailsResponse;
+      setProperty(response.data as Property);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load property details'));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [propertyId]);
 
   useEffect(() => {
     if (propertyId) {
-      fetchPropertyDetails();
+      void fetchPropertyDetails();
     }
-  }, [propertyId]);
+  }, [fetchPropertyDetails, propertyId]);
 
   // Admin: Set duration/expiry for property
   const handleSetDuration = async () => {
     if (!property) return;
     setDurationLoading(true);
     try {
-      const payload: any = { status: property.status };
-      if (durationDays) payload.durationDays = Number(durationDays);
-      if (expiresAtInput) payload.expiresAt = expiresAtInput;
       // If admin provided durationDays or expiresAt, pass them to the API
       const durationNum = durationDays ? Number(durationDays) : undefined;
       const expiresAtVal = expiresAtInput ? expiresAtInput : undefined;
-      await updatePropertyStatus(property.id, payload.status as string, durationNum, expiresAtVal);
+      await updatePropertyStatus(property.id, property.status, durationNum, expiresAtVal);
       await fetchPropertyDetails();
       setDurationDays('');
       setExpiresAtInput('');
       alert(language === 'ar' ? 'تم تحديث مدة العقار بنجاح' : 'Property duration updated successfully');
-    } catch (err: any) {
-      alert(err.message || (language === 'ar' ? 'فشل تحديث مدة العقار' : 'Failed to update property duration'));
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, language === 'ar' ? 'فشل تحديث مدة العقار' : 'Failed to update property duration'));
     } finally {
       setDurationLoading(false);
     }
@@ -122,15 +146,14 @@ export default function PropertyDetailsPage() {
     return isIndividualProperty && (status === 'PENDING_ADMIN' || status === 'REJECTED');
   }, [property, isIndividualProperty]);
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     try {
-      const resp = await getCompanies(undefined, 1, 200, 'approved');
-      const list = (resp as any)?.data?.companies ?? (resp as any)?.data ?? [];
-      if (Array.isArray(list)) setCompanies(list);
+      const resp = await getCompanies(undefined, 1, 200, 'approved') as ApprovedCompaniesResponse;
+      setCompanies(extractCompanies(resp));
     } catch {
       // non-blocking
     }
-  };
+  }, []);
 
   const openDistributeModal = async () => {
     setDistributionMode('ALL');
@@ -153,16 +176,19 @@ export default function PropertyDetailsPage() {
       if (distributionMode === 'ALL') {
         await distributePropertyToCompanies(property.id, { mode: 'ALL' });
       } else {
+        if (!selectedCompanyId) {
+          return;
+        }
         await distributePropertyToCompanies(property.id, {
           mode: 'COMPANY',
-          companyId: selectedCompanyId as number,
+          companyId: selectedCompanyId,
         });
       }
       setIsDistributeOpen(false);
       await fetchPropertyDetails();
       alert('Property sent to companies successfully.');
-    } catch (err: any) {
-      alert(err?.message || 'Failed to distribute property.');
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, 'Failed to distribute property.'));
     } finally {
       setActionLoading(false);
     }
@@ -200,7 +226,7 @@ export default function PropertyDetailsPage() {
     const normalizedStatus = String(originalStatus || '').toLowerCase();
 
     // حدد إن كان العقار منتهيًا إما من الحقل isExpired أو من expiresAt
-    let isExpired = Boolean((prop as any).isExpired);
+    let isExpired = Boolean(prop.isExpired);
     if (!isExpired && prop.expiresAt) {
       const ts = new Date(prop.expiresAt).getTime();
       if (!Number.isNaN(ts)) {
@@ -377,7 +403,7 @@ export default function PropertyDetailsPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">Minimum Price (Individual)</label>
                 <p className="text-gray-900 font-semibold text-lg">
-                  {property?.minimumPrice ? formatPrice(property.minimumPrice as any, property.purpose) : 'N/A'}
+                  {property?.minimumPrice ? formatPrice(property.minimumPrice, property.purpose) : 'N/A'}
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Not published publicly; admin distributes offers to companies.</p>
               </div>
@@ -631,12 +657,15 @@ export default function PropertyDetailsPage() {
               
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-3">Map Preview</label>
-                <img 
+                <Image
                   src={`https://maps.googleapis.com/maps/api/staticmap?center=${property.latitude},${property.longitude}&zoom=14&size=600x300&key=YOUR_GOOGLE_MAPS_API_KEY`}
                   alt="Property Location"
+                  width={600}
+                  height={300}
+                  unoptimized
                   className="w-full h-64 object-cover rounded-lg border border-gray-200"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1hcCBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
+                    e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPk1hcCBub3QgYXZhaWxhYmxlPC90ZXh0Pjwvc3ZnPg==';
                   }}
                 />
               </div>
@@ -708,14 +737,17 @@ export default function PropertyDetailsPage() {
           {property?.images && property.images.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {property.images.map((imageUrl, index) => (
-                <div key={index} className="relative group">
-                  <img
+                <div key={index} className="relative group h-48">
+                  <Image
                     src={imageUrl}
                     alt={`Property image ${index + 1}`}
+                    fill
+                    unoptimized
+                    sizes="(min-width: 1024px) 33vw, (min-width: 768px) 50vw, 100vw"
                     className="w-full h-48 object-cover rounded-lg border border-gray-200 cursor-pointer transition-transform group-hover:scale-105"
                     onClick={() => handleImageClick(imageUrl)}
                     onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
+                      e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIG5vdCBhdmFpbGFibGU8L3RleHQ+PC9zdmc+';
                     }}
                   />
                   <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-opacity rounded-lg flex items-center justify-center">

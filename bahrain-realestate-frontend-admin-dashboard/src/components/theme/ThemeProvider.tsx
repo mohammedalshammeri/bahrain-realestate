@@ -12,22 +12,25 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>(() => {
+    if (typeof window === 'undefined') {
+      return 'light';
+    }
 
-  useEffect(() => {
-    // Load theme from localStorage or system preference
-    const savedTheme = localStorage.getItem('admin-theme') as Theme;
+    const savedTheme = localStorage.getItem('admin-theme') as Theme | null;
     const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const initialTheme = savedTheme || systemTheme;
-    
-    setTheme(initialTheme);
-    updateDocumentClass(initialTheme);
-  }, []);
 
-  const updateDocumentClass = (newTheme: Theme) => {
+    return savedTheme || systemTheme;
+  });
+
+  function updateDocumentClass(newTheme: Theme) {
     document.documentElement.classList.remove('light', 'dark');
     document.documentElement.classList.add(newTheme);
-  };
+  }
+
+  useEffect(() => {
+    updateDocumentClass(theme);
+  }, [theme]);
 
   const toggleTheme = () => {
     const newTheme = theme === 'light' ? 'dark' : 'light';

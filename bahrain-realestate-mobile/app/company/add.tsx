@@ -67,7 +67,7 @@ export default function AddProperty() {
   const parkingCountRef = useRef<TextInput>(null);
   const descriptionRef = useRef<TextInput>(null);
 
-  const focusAvailable = (...refs: React.RefObject<TextInput>[]) => {
+  const focusAvailable = (...refs: Array<React.RefObject<TextInput | null>>) => {
     for (const ref of refs) {
       if (ref.current) {
         ref.current.focus();
@@ -461,7 +461,7 @@ export default function AddProperty() {
         const propertyId = response.data.data.id;
 
         // 2. Upload Images/Video if any
-        let formDataImages = new FormData(); // استخدام let بدل const للسماح بإعادة الاستخدام
+        const formDataImages = new FormData();
         
         let publishVideos = [];
         if (propertyData?.videos && Array.isArray(propertyData.videos)) {
@@ -1240,6 +1240,11 @@ const styles = StyleSheet.create({
   },
   form: {
     padding: 20,
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#00305D',
   },
   label: {
     fontSize: 14,

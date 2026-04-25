@@ -2,6 +2,15 @@ import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { adminApi } from '../api/adminApi';
 
+interface LoginResponseData {
+  admin: {
+    id: number;
+    name: string;
+    username: string;
+  };
+  token: string;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
@@ -20,13 +29,14 @@ export const authOptions: NextAuthOptions = {
             username: credentials.username,
             password: credentials.password,
           });
+          const data = response.data as LoginResponseData | undefined;
 
-          if (response.success && response.data) {
+          if (response.success && data) {
             return {
-              id: response.data.admin.id.toString(),
-              name: response.data.admin.name,
-              email: response.data.admin.username,
-              token: response.data.token,
+              id: data.admin.id.toString(),
+              name: data.admin.name,
+              email: data.admin.username,
+              token: data.token,
             };
           }
           
@@ -66,5 +76,5 @@ export const authOptions: NextAuthOptions = {
     maxAge: 24 * 60 * 60, // 24 hours
   },
   
-  secret: process.env.NEXTAUTH_SECRET || 'admin-secret-key',
+  secret: process.env.NEXTAUTH_SECRET,
 };

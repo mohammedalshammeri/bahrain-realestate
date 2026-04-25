@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking, KeyboardAvoidingView, Platform, Switch } from 'react-native';
+import { View, Text, TextInput, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Linking, KeyboardAvoidingView, Platform, Switch, Keyboard } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import api from '../../../src/api/api';
@@ -543,8 +543,6 @@ export default function EditProperty() {
           keyboardType="numeric"
           value={formData.price}
           onChangeText={(text) => setFormData({...formData, price: text})}
-          returnKeyType="next"
-          // We can't guarantee which field comes next due to conditional rendering,
           returnKeyType="done"
           onSubmitEditing={() => Keyboard.dismiss()}
         />
@@ -875,9 +873,18 @@ const styles = StyleSheet.create({
   form: {
     padding: 20,
   },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#34495e',
+  },
   label: {
     fontSize: 14,
     fontWeight: 'bold',
+    color: '#34495e',
+    marginBottom: 8,
+    marginTop: 10,
+  },
   toggleRow: {
     marginTop: 10,
     marginBottom: 10,
@@ -893,10 +900,6 @@ const styles = StyleSheet.create({
     color: '#34495e',
     flex: 1,
     marginEnd: 12,
-  },
-    color: '#34495e',
-    marginBottom: 8,
-    marginTop: 10,
   },
   input: {
     borderWidth: 1,

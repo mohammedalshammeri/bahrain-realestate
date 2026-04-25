@@ -31,6 +31,15 @@ export default function WithdrawalDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<"approve" | "reject" | null>(null);
+
+  const getErrorMessage = useCallback((error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message) {
+      return error.message;
+    }
+
+    return fallback;
+  }, []);
+
   // Fetch withdrawal details
   const fetchWithdrawal = useCallback(async () => {
     setIsLoading(true);
@@ -39,13 +48,13 @@ export default function WithdrawalDetailsPage() {
     try {
       const { getWithdrawalById } = await import('@/lib/api/adminApi');
       const response = await getWithdrawalById(parseInt(withdrawalId));
-      setWithdrawal(response.data);
-    } catch (err: any) {
-      setError(err.message ?? "Failed to load withdrawal details.");
+      setWithdrawal(response.data as WithdrawalDetail);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load withdrawal details."));
     } finally {
       setIsLoading(false);
     }
-  }, [withdrawalId]);
+  }, [getErrorMessage, withdrawalId]);
 
   useEffect(() => {
     fetchWithdrawal();
@@ -58,12 +67,12 @@ export default function WithdrawalDetailsPage() {
       const { approveWithdrawal } = await import('@/lib/api/adminApi');
       await approveWithdrawal(withdrawal.id);
       await fetchWithdrawal(); // Refresh data
-    } catch (err: any) {
-      alert(err.message ?? "Failed to approve withdrawal.");
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, "Failed to approve withdrawal."));
     } finally {
       setActionLoading(null);
     }
-  }, [withdrawal, fetchWithdrawal]);
+  }, [fetchWithdrawal, getErrorMessage, withdrawal]);
   // Handle reject withdrawal
   const handleReject = useCallback(async () => {
     if (!withdrawal) return;
@@ -72,12 +81,12 @@ export default function WithdrawalDetailsPage() {
       const { rejectWithdrawal } = await import('@/lib/api/adminApi');
       await rejectWithdrawal(withdrawal.id);
       await fetchWithdrawal(); // Refresh data
-    } catch (err: any) {
-      alert(err.message ?? "Failed to reject withdrawal.");
+    } catch (err: unknown) {
+      alert(getErrorMessage(err, "Failed to reject withdrawal."));
     } finally {
       setActionLoading(null);
     }
-  }, [withdrawal, fetchWithdrawal]);
+  }, [fetchWithdrawal, getErrorMessage, withdrawal]);
 
   // Format currency
   const formatCurrency = (amount: number) => {

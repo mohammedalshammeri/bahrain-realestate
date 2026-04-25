@@ -1,0 +1,188 @@
+{
+  "scope": "backend-launch-readiness",
+  "project": "bahrain-realestate-backend",
+  "generatedAt": "2026-04-21",
+  "currentStatus": {
+    "backendBuild": "pass",
+    "backendTests": "fail-no-tests-found",
+    "envReadyForProduction": false,
+    "mainBlocker": "production environment configuration is incomplete and secrets currently exposed in conversation must be rotated"
+  },
+  "summary": {
+    "whatIsWorking": [
+      "TypeScript backend build passes",
+      "Database variable exists",
+      "Basic JWT and SMTP placeholders exist",
+      "Uploads currently work using local disk storage in uploads/"
+    ],
+    "whatIsMissing": [
+      "Production-safe secrets",
+      "Production URLs and CORS settings",
+      "SMTP credentials",
+      "AFS payment credentials and callback URLs",
+      "Decision on local uploads vs cloud object storage",
+      "Automated backend tests"
+    ]
+  },
+  "criticalRisks": [
+    {
+      "id": "R-001",
+      "severity": "critical",
+      "title": "Exposed database connection string",
+      "details": "The current DATABASE_URL appeared in chat context and should be considered exposed. Rotate it before launch."
+    },
+    {
+      "id": "R-002",
+      "severity": "critical",
+      "title": "Weak placeholder JWT secret",
+      "details": "JWT_SECRET is not production-safe and must be replaced with a strong random value."
+    },
+    {
+      "id": "R-003",
+      "severity": "high",
+      "title": "Production env is incomplete",
+      "details": "Missing SMTP, AFS, URL, and CORS variables will break core flows like auth recovery and payments."
+    },
+    {
+      "id": "R-004",
+      "severity": "high",
+      "title": "No backend tests",
+      "details": "npm test currently returns No tests found. This is not a compile issue, but it reduces launch confidence."
+    }
+  ],
+  "missingOrIncorrectEnv": {
+    "presentButWrongForProduction": [
+      {
+        "key": "NODE_ENV",
+        "current": "development",
+        "required": "production"
+      },
+      {
+        "key": "BACKEND_PUBLIC_URL",
+        "current": "http://localhost:8000",
+        "required": "https://api.bphub.app"
+      },
+      {
+        "key": "JWT_SECRET",
+        "current": "placeholder",
+        "required": "strong random secret"
+      }
+    ],
+    "missingRequiredKeys": [
+      "JWT_EXPIRE",
+      "API_BASE_URL",
+      "BASE_URL",
+      "FRONTEND_URL",
+      "CORS_ORIGINS",
+      "AFS_API_KEY",
+      "AFS_MERCHANT_ID",
+      "AFS_RETURN_URL",
+      "AFS_CALLBACK_URL",
+      "SMTP_USER",
+      "SMTP_PASS",
+      "SMTP_FROM"
+    ],
+    "uploadsNotes": {
+      "currentMode": "local-disk-storage",
+      "currentBehavior": "files are stored in backend/uploads via multer",
+      "envKeysMissingBecauseFeatureNotImplemented": [
+        "CLOUDINARY_URL",
+        "S3_BUCKET",
+        "S3_REGION",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "R2_ACCOUNT_ID",
+        "R2_BUCKET"
+      ],
+      "decisionNeeded": "keep local uploads on VPS or migrate uploads to cloud object storage"
+    }
+  },
+  "plan": [
+    {
+      "phase": "P1",
+      "title": "Secure and complete production env",
+      "tasks": [
+        "Rotate DATABASE_URL",
+        "Replace JWT_SECRET with strong random value",
+        "Set NODE_ENV=production",
+        "Set production public URLs and CORS origins",
+        "Fill SMTP credentials",
+        "Fill AFS credentials and callback URLs"
+      ]
+    },
+    {
+      "phase": "P2",
+      "title": "Decide upload strategy",
+      "tasks": [
+        "Choose between local VPS uploads and cloud storage",
+        "If local: confirm persistent disk, backups, and public serving path",
+        "If cloud: implement provider integration and add provider env keys"
+      ]
+    },
+    {
+      "phase": "P3",
+      "title": "Runtime verification",
+      "tasks": [
+        "Start backend with production-like env",
+        "Verify DB connection",
+        "Verify auth/login",
+        "Verify password reset email",
+        "Verify image/video upload flow",
+        "Verify AFS payment init and callback flow"
+      ]
+    },
+    {
+      "phase": "P4",
+      "title": "Safety and confidence",
+      "tasks": [
+        "Add at least smoke tests for health/auth/payment critical flows",
+        "Confirm rate limiting, CORS, and headers in production",
+        "Confirm uploads retention and backup policy"
+      ]
+    }
+  ],
+  "whatINeedFromYou": [
+    {
+      "id": "U-001",
+      "priority": "critical",
+      "need": "New rotated DATABASE_URL",
+      "why": "The current one is exposed and should not be used for launch"
+    },
+    {
+      "id": "U-002",
+      "priority": "critical",
+      "need": "Final production JWT secret or approval for me to generate a placeholder format for you",
+      "why": "Auth tokens must be signed with a strong secret"
+    },
+    {
+      "id": "U-003",
+      "priority": "critical",
+      "need": "AFS credentials: API key, merchant ID, return URL confirmation, callback URL confirmation",
+      "why": "Payments cannot work without them"
+    },
+    {
+      "id": "U-004",
+      "priority": "critical",
+      "need": "SMTP credentials for info@bphub.app or the email account you will actually send from",
+      "why": "Password reset and transactional email require valid SMTP auth"
+    },
+    {
+      "id": "U-005",
+      "priority": "high",
+      "need": "Decision on upload storage: local VPS or cloud",
+      "why": "This determines whether current uploads code is acceptable or must be changed"
+    },
+    {
+      "id": "U-006",
+      "priority": "medium",
+      "need": "If staying on local uploads: confirm VPS disk size, backup strategy, and whether uploaded files must survive redeploys",
+      "why": "Local uploads are operationally risky without persistence planning"
+    }
+  ],
+  "readyToDoNextWithoutWaiting": [
+    "Prepare a production-safe backend .env template from your final values",
+    "Verify backend runtime with the completed env",
+    "Review whether local uploads are sufficient for launch traffic",
+    "Create a minimal smoke-test checklist for backend critical flows"
+  ]
+}

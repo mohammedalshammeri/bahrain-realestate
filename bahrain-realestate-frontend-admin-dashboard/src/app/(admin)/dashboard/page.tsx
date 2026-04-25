@@ -1,10 +1,26 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { adminApi, updateCompanyStatus, deleteCompany } from '@/lib/api/adminApi';
 import { useRouter } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ExpiringPropertiesNotification from '@/components/ExpiringPropertiesNotification';
+
+interface RecentCompanyActivity {
+  id: number;
+  name: string;
+  status: 'approved' | 'pending' | 'rejected' | 'blocked' | string;
+  createdAt: string;
+}
+
+interface RecentPropertyActivity {
+  id: number;
+  description?: string | null;
+  price: number;
+  company?: {
+    name?: string;
+  } | null;
+}
 
 interface DashboardStats {
   statistics: {
@@ -28,8 +44,8 @@ interface DashboardStats {
     };
   };
   recentActivities: {
-    companies: any[];
-    properties: any[];
+    companies: RecentCompanyActivity[];
+    properties: RecentPropertyActivity[];
   };
 }
 
@@ -40,7 +56,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     try {
       // Check if user is authenticated
       if (!adminApi.isAuthenticated()) {
@@ -52,25 +68,27 @@ export default function AdminDashboard() {
       const response = await adminApi.getDashboardStats();
       
       if (response.success) {
-        setStats(response.data);
+        setStats(response.data as DashboardStats);
       } else {
         setError(response.message || t('dashboard.loadingFailed'));
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Dashboard error:', error);
-      if (error.message.includes('401')) {
+      const message = error instanceof Error ? error.message : t('dashboard.errorFetch');
+
+      if (message.includes('401')) {
         router.push('/auth/login');
       } else {
-        setError(error.message || t('dashboard.errorFetch'));
+        setError(message || t('dashboard.errorFetch'));
       }
     } finally {
       setLoading(false);
     }
-  };
+  }, [router, t]);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, [router]);
+    void fetchDashboardData();
+  }, [fetchDashboardData]);
 
   const handleLogout = () => {
     adminApi.logout();
@@ -79,8 +97,8 @@ export default function AdminDashboard() {
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
       await updateCompanyStatus(id, newStatus);
-      fetchDashboardData(); // Refresh data
-    } catch (err) {
+      void fetchDashboardData();
+      } catch {
       alert('Failed to update company status');
     }
   };
@@ -89,8 +107,8 @@ export default function AdminDashboard() {
     if (confirm(t('companies.messages.confirmDelete'))) {
       try {
         await deleteCompany(id);
-        fetchDashboardData(); // Refresh data
-      } catch (err) {
+        void fetchDashboardData();
+      } catch {
         alert(t('companies.messages.deleteFail'));
       }
     }
@@ -156,7 +174,7 @@ export default function AdminDashboard() {
           <div className="relative z-10">
             <h2 className="text-3xl font-bold mb-2">Welcome back, Admin! 👋</h2>
             <p className="text-blue-100 max-w-xl text-lg">
-              Here's what's happening with your real estate platform today.
+              Here&apos;s what&apos;s happening with your real estate platform today.
             </p>
           </div>
         </div>
